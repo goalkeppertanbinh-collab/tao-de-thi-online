@@ -1,0 +1,70 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tạo đề thi Math CV7991</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      body { font-family: 'Inter', sans-serif; }
+      /* Custom scrollbar for better aesthetics */
+      ::-webkit-scrollbar { width: 8px; }
+      ::-webkit-scrollbar-track { background: #f1f1f1; }
+      ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+      
+      .markdown-body h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; color: #1e293b; }
+      .markdown-body h2 { font-size: 1.25rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.75rem; color: #334155; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; }
+      .markdown-body h3 { font-size: 1.1rem; font-weight: 600; margin-top: 1rem; margin-bottom: 0.5rem; color: #475569; }
+      .markdown-body p { margin-bottom: 0.75rem; line-height: 1.6; }
+      .markdown-body ul, .markdown-body ol { margin-bottom: 1rem; padding-left: 1.5rem; }
+      .markdown-body li { margin-bottom: 0.25rem; }
+      .markdown-body table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+      .markdown-body th, .markdown-body td { border: 1px solid #cbd5e1; padding: 0.5rem; text-align: left; }
+      .markdown-body th { background-color: #f1f5f9; font-weight: 600; }
+      
+      .primary-btn { @apply text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200; }
+      .secondary-btn { @apply text-green-700 bg-green-50 hover:bg-green-100 border border-green-200; }
+      .icon-btn { @apply text-slate-600 hover:text-slate-800 hover:bg-slate-100 border border-slate-200; }
+      .primary-btn, .secondary-btn, .icon-btn { @apply text-sm flex items-center gap-1.5 font-medium px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50; }
+
+      /* Print styles */
+      @media print {
+        body { background: white; }
+        header, button { display: none !important; }
+        .print\:hidden { display: none !important; }
+        .print\:w-full { width: 100% !important; max-width: none !important; }
+        .markdown-body { font-size: 12pt; }
+        .printable-content { overflow: visible !important; height: auto !important; }
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
+    "react-markdown": "https://aistudiocdn.com/react-markdown@^10.1.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "file-saver": "https://aistudiocdn.com/file-saver@^2.0.5",
+    "rehype-katex": "https://aistudiocdn.com/rehype-katex@^7.0.1",
+    "mammoth": "https://aistudiocdn.com/mammoth@^1.11.0",
+    "pdfjs-dist": "https://aistudiocdn.com/pdfjs-dist@^5.4.449",
+    "exceljs": "https://aistudiocdn.com/exceljs@^4.4.0",
+    "docx": "https://aistudiocdn.com/docx@^9.5.1",
+    "remark-math": "https://aistudiocdn.com/remark-math@^6.0.0"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
