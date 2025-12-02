@@ -2,7 +2,7 @@
 import { TestParams } from "./types";
 
 export const GRADES = ["Lớp 6", "Lớp 7", "Lớp 8", "Lớp 9"];
-export const DURATIONS = ["45 phút", "60 phút", "90 phút"];
+export const DURATIONS = ["15 phút", "45 phút", "60 phút", "90 phút"];
 
 export const DEFAULT_PARAMS: TestParams = {
   grade: "Lớp 9",
