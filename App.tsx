@@ -50,7 +50,7 @@ const App: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="bg-blue-600 p-2 rounded-lg"><Calculator className="w-6 h-6 text-white" /></div>
-            <div><h1 className="text-xl font-bold text-slate-900 leading-tight">THCS MathGen 7991</h1><p className="text-xs text-slate-500 font-medium">Trợ lý tạo đề kiểm tra Toán</p></div>
+            <div><h1 className="text-xl font-bold text-slate-900 leading-tight">Tạo đề thi Math CV7991</h1><p className="text-xs text-slate-500 font-medium">Trợ lý tạo đề kiểm tra Toán</p></div>
           </div>
           
           <div className="flex bg-slate-100 p-1 rounded-lg">
