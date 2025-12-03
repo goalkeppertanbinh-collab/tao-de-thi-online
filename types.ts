@@ -14,7 +14,8 @@ export interface TopicMatrix {
 
 export interface Topic {
   id: string;
-  name: string;
+  name: string; // Sub-topic / Content
+  parentName?: string; // Major Topic / Chapter
   description?: string; // Detailed suggestion for the AI
   matrix: TopicMatrix;
 }

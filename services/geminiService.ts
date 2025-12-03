@@ -49,7 +49,7 @@ Với mỗi bộ đề, bạn phải tạo ra Bảng Đáp Án tổng hợp so s
 
 YÊU CẦU VỀ TRỘN ĐỀ (SHUFFLING):
 - Nếu bật trộn: CHỈ trộn thứ tự câu và đáp án ở Phần I, II, III giữa các mã đề.
-- TUYỆT ĐỐI KHÔNG TRỘN PHẦN IV (TỰ LUẬN). Câu hỏi tự luận phải giữ nguyên vị trí và nội dung cho mọi mã đề của bộ đó.
+- TUYỆT ĐỐI KHÔNG TRỘN PHẦN IV (TỰ LUN). Câu hỏi tự luận phải giữ nguyên vị trí và nội dung cho mọi mã đề của bộ đó.
 
 CẤU TRÚC OUTPUT ĐỂ TÁCH FILE:
 ## BỘ ĐỀ SỐ [N] (Các mã: [Danh sách mã] - [Tên File])
@@ -88,7 +88,8 @@ const formatTopicMatrix = (topics: Topic[]) => {
   };
 
   topics.forEach((t, index) => {
-    matrixStr += `- Chủ đề ${index + 1}: "${t.name}"${t.description ? `\n    (Yêu cầu chi tiết: ${t.description})` : ""}\n`;
+    const parent = t.parentName ? `(Chương: ${t.parentName})` : "";
+    matrixStr += `- Chủ đề ${index + 1}: "${t.name}" ${parent}${t.description ? `\n    (Yêu cầu chi tiết: ${t.description})` : ""}\n`;
     
     const mcTotal = sumLevels(t.matrix.multipleChoice);
     if (mcTotal > 0) {

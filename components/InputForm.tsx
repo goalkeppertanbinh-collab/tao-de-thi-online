@@ -4,7 +4,7 @@ import { TestParams, Topic, TestSetConfig, LevelCounts } from "../types";
 import { GRADES, DURATIONS } from "../constants";
 import { CURRICULUM_DATA, CurriculumStandard } from "../data/curriculumData";
 import { 
-  Key, Eye, EyeOff, Files, Settings2, Trash2, Upload, FileText, Grid3X3, FileInput, Shuffle, CopyX, Plus, ListChecks, Calculator, MessageSquareText, Lightbulb, BookOpen
+  Key, Eye, EyeOff, Files, Settings2, Trash2, Upload, FileText, Grid3X3, FileInput, Shuffle, CopyX, Plus, ListChecks, Calculator, MessageSquareText, Lightbulb, BookOpen, ChevronRight, X, FolderTree
 } from "lucide-react";
 
 interface InputFormProps {
@@ -20,13 +20,15 @@ const InputForm: React.FC<InputFormProps> = ({
   params, setParams, onGenerate, isLoading, apiKey, setApiKey
 }) => {
   const [newTopicName, setNewTopicName] = useState("");
+  const [newParentTopic, setNewParentTopic] = useState(""); // State for Major Topic
   const [newTopicDescription, setNewTopicDescription] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
   const [matrixTab, setMatrixTab] = useState<"manual" | "file">("manual");
   
-  // Suggestions
-  const [suggestions, setSuggestions] = useState<CurriculumStandard | null>(null);
+  // Suggestions State
+  const [suggestionList, setSuggestionList] = useState<CurriculumStandard[]>([]);
+  const [selectedStandard, setSelectedStandard] = useState<CurriculumStandard | null>(null);
 
   // Matrix input buffer
   const [matrixInput, setMatrixInput] = useState<string[][]>(Array(4).fill(null).map(() => Array(3).fill("")));
@@ -36,22 +38,42 @@ const InputForm: React.FC<InputFormProps> = ({
   // --- AUTO-SUGGEST LOGIC ---
   useEffect(() => {
     if (!newTopicName.trim()) {
-        setSuggestions(null);
+        setSuggestionList([]);
+        setSelectedStandard(null);
         return;
     }
 
-    const lowerName = newTopicName.toLowerCase();
-    // 1. Filter by Grade first
+    const lower = newTopicName.toLowerCase();
     const gradeData = CURRICULUM_DATA.filter(item => item.grade === params.grade);
     
-    // 2. Find best match by keyword
-    const match = gradeData.find(item => 
-        item.keywords.some(k => lowerName.includes(k)) || 
-        item.topic.toLowerCase().includes(lowerName)
+    // 1. Check for exact match to show content immediately
+    const exactMatch = gradeData.find(item => item.topic.toLowerCase() === lower);
+    if (exactMatch) {
+        setSelectedStandard(exactMatch);
+        if (!newParentTopic && exactMatch.parentTopic) {
+            setNewParentTopic(exactMatch.parentTopic);
+        }
+        setSuggestionList([]); 
+        return;
+    }
+
+    // 2. Fuzzy search for branching candidates
+    const matches = gradeData.filter(item => 
+        item.topic.toLowerCase().includes(lower) || 
+        item.parentTopic.toLowerCase().includes(lower) ||
+        item.keywords.some(k => lower.includes(k))
     );
 
-    setSuggestions(match || null);
+    setSuggestionList(matches);
+    setSelectedStandard(null);
+
   }, [newTopicName, params.grade]);
+
+  const handleSelectSuggestionTopic = (item: CurriculumStandard) => {
+      setNewTopicName(item.topic);
+      setNewParentTopic(item.parentTopic); // Auto-fill parent topic
+      // The useEffect will trigger next render, match exact, and show content
+  };
 
   const addSuggestionToDesc = (text: string) => {
       setNewTopicDescription(prev => {
@@ -115,7 +137,6 @@ const InputForm: React.FC<InputFormProps> = ({
       setParams(prev => {
           const newSets = [...prev.testSets];
           newSets[index] = { ...newSets[index], [field]: value };
-          // Auto-update quantity if codes change
           if (field === 'specificCodes') {
               newSets[index].quantity = (value as string).split(',').filter(s => s.trim()).length || 1;
           }
@@ -130,6 +151,7 @@ const InputForm: React.FC<InputFormProps> = ({
       const newTopicData: Topic = {
         id: editingId || Date.now().toString(),
         name: newTopicName.trim(),
+        parentName: newParentTopic.trim() || newTopicName.trim(), // Use name if parent not provided
         description: newTopicDescription.trim(),
         matrix: {
           multipleChoice: { recognition: getVal(0,0), comprehension: getVal(0,1), application: getVal(0,2) },
@@ -145,13 +167,17 @@ const InputForm: React.FC<InputFormProps> = ({
         setParams((prev) => ({ ...prev, topics: [...prev.topics, newTopicData] }));
       }
       setNewTopicName("");
+      setNewParentTopic("");
       setNewTopicDescription("");
+      setSuggestionList([]);
+      setSelectedStandard(null);
       setMatrixInput(Array(4).fill(null).map(() => Array(3).fill("")));
     }
   };
 
   const handleEditTopic = (topic: Topic) => {
     setNewTopicName(topic.name);
+    setNewParentTopic(topic.parentName || "");
     setNewTopicDescription(topic.description || "");
     setEditingId(topic.id);
     const m = topic.matrix;
@@ -342,53 +368,96 @@ const InputForm: React.FC<InputFormProps> = ({
                       {/* INPUT SECTION */}
                       <div className="lg:col-span-5 space-y-4">
                           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                              <div className="flex justify-between items-center mb-2">
-                                  <h4 className="font-bold text-slate-700">{editingId ? "Chỉnh sửa chủ đề" : "Thêm chủ đề mới"}</h4>
-                                  <input 
-                                      type="text" 
-                                      value={newTopicName} 
-                                      onChange={(e) => setNewTopicName(e.target.value)}
-                                      placeholder="Nhập tên chương..."
-                                      className="w-40 px-3 py-1.5 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-200"
-                                  />
+                              <h4 className="font-bold text-slate-700 mb-3">{editingId ? "Chỉnh sửa chủ đề" : "Thêm chủ đề mới"}</h4>
+                              
+                              <div className="grid grid-cols-2 gap-3 mb-3">
+                                  <div>
+                                      <label className="block text-[10px] text-slate-500 font-bold mb-1">Chủ đề lớn (Chương)</label>
+                                      <input 
+                                          type="text" 
+                                          value={newParentTopic} 
+                                          onChange={(e) => setNewParentTopic(e.target.value)}
+                                          placeholder="VD: Số tự nhiên"
+                                          className="w-full px-3 py-1.5 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-200"
+                                      />
+                                  </div>
+                                  <div>
+                                      <label className="block text-[10px] text-slate-500 font-bold mb-1">Chủ đề nhỏ (Nội dung)</label>
+                                      <div className="relative">
+                                        <input 
+                                            type="text" 
+                                            value={newTopicName} 
+                                            onChange={(e) => setNewTopicName(e.target.value)}
+                                            placeholder="Gõ để tìm..."
+                                            className="w-full px-3 py-1.5 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-200"
+                                        />
+                                        {newTopicName && <button onClick={() => setNewTopicName("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X className="w-3 h-3"/></button>}
+                                      </div>
+                                  </div>
                               </div>
 
-                              {/* SUGGESTION UI */}
-                              {suggestions && (
-                                <div className="mb-3 bg-blue-50 border border-blue-100 rounded-lg p-2.5">
-                                    <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-800 mb-2">
+                              {/* BRANCHING SUGGESTIONS UI */}
+                              {suggestionList.length > 0 && !selectedStandard && (
+                                <div className="mb-3 bg-indigo-50 border border-indigo-100 rounded-lg p-2.5">
+                                    <div className="flex items-center gap-1.5 text-xs font-semibold text-indigo-800 mb-2">
                                         <Lightbulb className="w-3 h-3 text-yellow-500" />
-                                        Gợi ý cho: "{suggestions.topic}"
+                                        Gợi ý chủ đề nhỏ (Chọn để điền):
                                     </div>
-                                    <div className="space-y-2">
-                                        {suggestions.content.nb.length > 0 && (
-                                            <div className="flex flex-wrap gap-1">
-                                                <span className="text-[10px] font-bold text-slate-500 w-full">Biết:</span>
-                                                {suggestions.content.nb.map((item, i) => (
-                                                    <button key={i} onClick={() => addSuggestionToDesc(item)} className="px-2 py-1 bg-white border border-blue-200 rounded text-[10px] text-slate-600 hover:bg-blue-100 hover:text-blue-700 transition-colors text-left truncate max-w-full">
-                                                        {item}
-                                                    </button>
-                                                ))}
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {suggestionList.map((item, i) => (
+                                            <button 
+                                                key={i} 
+                                                onClick={() => handleSelectSuggestionTopic(item)} 
+                                                className="px-2 py-1 bg-white border border-indigo-200 rounded text-[10px] text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 transition-colors flex items-center gap-1 shadow-sm"
+                                            >
+                                                {item.topic} <span className="text-[9px] text-indigo-400">({item.parentTopic})</span> <ChevronRight className="w-3 h-3 opacity-50" />
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                              )}
+
+                              {selectedStandard && (
+                                <div className="mb-3 bg-blue-50 border border-blue-100 rounded-lg p-2.5 animate-in fade-in zoom-in-95 duration-200">
+                                    <div className="flex items-center justify-between gap-1.5 text-xs font-semibold text-blue-800 mb-2">
+                                        <span className="flex items-center gap-1"><Lightbulb className="w-3 h-3 text-yellow-500" /> Gợi ý cho: "{selectedStandard.topic}"</span>
+                                        <button onClick={() => setSelectedStandard(null)} className="text-[10px] text-slate-400 hover:text-slate-600">Đóng</button>
+                                    </div>
+                                    <div className="space-y-2 max-h-[150px] overflow-y-auto custom-scrollbar pr-1">
+                                        {selectedStandard.content.nb.length > 0 && (
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-[10px] font-bold text-slate-500 uppercase">Biết:</span>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {selectedStandard.content.nb.map((item, i) => (
+                                                        <button key={i} onClick={() => addSuggestionToDesc(item)} className="px-2 py-1 bg-white border border-blue-200 rounded text-[10px] text-slate-600 hover:bg-blue-100 hover:text-blue-700 transition-colors text-left max-w-full">
+                                                            {item}
+                                                        </button>
+                                                    ))}
+                                                </div>
                                             </div>
                                         )}
-                                        {suggestions.content.th.length > 0 && (
-                                            <div className="flex flex-wrap gap-1">
-                                                <span className="text-[10px] font-bold text-slate-500 w-full">Hiểu:</span>
-                                                {suggestions.content.th.map((item, i) => (
-                                                    <button key={i} onClick={() => addSuggestionToDesc(item)} className="px-2 py-1 bg-white border border-green-200 rounded text-[10px] text-slate-600 hover:bg-green-100 hover:text-green-700 transition-colors text-left truncate max-w-full">
-                                                        {item}
-                                                    </button>
-                                                ))}
+                                        {selectedStandard.content.th.length > 0 && (
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-[10px] font-bold text-slate-500 uppercase">Hiểu:</span>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {selectedStandard.content.th.map((item, i) => (
+                                                        <button key={i} onClick={() => addSuggestionToDesc(item)} className="px-2 py-1 bg-white border border-green-200 rounded text-[10px] text-slate-600 hover:bg-green-100 hover:text-green-700 transition-colors text-left max-w-full">
+                                                            {item}
+                                                        </button>
+                                                    ))}
+                                                </div>
                                             </div>
                                         )}
-                                        {suggestions.content.vd.length > 0 && (
-                                            <div className="flex flex-wrap gap-1">
-                                                <span className="text-[10px] font-bold text-slate-500 w-full">Vận dụng:</span>
-                                                {suggestions.content.vd.map((item, i) => (
-                                                    <button key={i} onClick={() => addSuggestionToDesc(item)} className="px-2 py-1 bg-white border border-orange-200 rounded text-[10px] text-slate-600 hover:bg-orange-100 hover:text-orange-700 transition-colors text-left truncate max-w-full">
-                                                        {item}
-                                                    </button>
-                                                ))}
+                                        {selectedStandard.content.vd.length > 0 && (
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-[10px] font-bold text-slate-500 uppercase">Vận dụng:</span>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {selectedStandard.content.vd.map((item, i) => (
+                                                        <button key={i} onClick={() => addSuggestionToDesc(item)} className="px-2 py-1 bg-white border border-orange-200 rounded text-[10px] text-slate-600 hover:bg-orange-100 hover:text-orange-700 transition-colors text-left max-w-full">
+                                                            {item}
+                                                        </button>
+                                                    ))}
+                                                </div>
                                             </div>
                                         )}
                                     </div>
@@ -400,7 +469,7 @@ const InputForm: React.FC<InputFormProps> = ({
                                     value={newTopicDescription}
                                     onChange={(e) => setNewTopicDescription(e.target.value)}
                                     placeholder="Gợi ý chi tiết (Tùy chọn). Chọn từ gợi ý trên hoặc tự nhập..."
-                                    className="w-full px-3 py-2 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-200 h-16 resize-none"
+                                    className="w-full px-3 py-2 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-200 h-20 resize-none"
                                   />
                                   <div className="absolute right-2 bottom-2 text-[10px] text-slate-400 pointer-events-none">
                                       <BookOpen className="w-3 h-3 inline mr-1" />
@@ -424,7 +493,7 @@ const InputForm: React.FC<InputFormProps> = ({
                               </div>
 
                               <div className="mt-4 flex gap-2 justify-end">
-                                  {editingId && <button onClick={() => {setEditingId(null); setNewTopicName(""); setNewTopicDescription("");}} className="px-4 py-2 bg-white border border-slate-300 rounded text-xs font-bold text-slate-600">Hủy</button>}
+                                  {editingId && <button onClick={() => {setEditingId(null); setNewTopicName(""); setNewParentTopic(""); setNewTopicDescription("");}} className="px-4 py-2 bg-white border border-slate-300 rounded text-xs font-bold text-slate-600">Hủy</button>}
                                   <button onClick={handleSaveTopic} disabled={!newTopicName} className="px-4 py-2 bg-blue-600 text-white rounded text-xs font-bold hover:bg-blue-700 flex items-center gap-1">
                                       {editingId ? "Lưu thay đổi" : <><Plus className="w-3 h-3" /> Thêm vào danh sách</>}
                                   </button>
@@ -464,6 +533,9 @@ const InputForm: React.FC<InputFormProps> = ({
                                               <div className="flex items-center gap-3">
                                                   <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500">{idx + 1}</div>
                                                   <div>
+                                                      <div className="text-xs font-semibold text-slate-500 flex items-center gap-1">
+                                                          <FolderTree className="w-3 h-3"/> {t.parentName || "Chương ..."}
+                                                      </div>
                                                       <div className="font-bold text-sm text-slate-800">{t.name}</div>
                                                   </div>
                                               </div>

@@ -274,8 +274,8 @@ export const exportMatrixDocx = async (params: TestParams) => {
         rows.push(new TableRow({
             children: [
                 createDataCell(docx, idx + 1),
-                createDataCell(docx, t.name, AlignmentType.LEFT),
-                createDataCell(docx, t.name, AlignmentType.LEFT), 
+                createDataCell(docx, t.parentName || t.name, AlignmentType.LEFT), // Use Parent Name (Major Topic)
+                createDataCell(docx, t.name, AlignmentType.LEFT), // Use Name (Content)
                 createDataCell(docx, m.multipleChoice.recognition || ""),
                 createDataCell(docx, m.multipleChoice.comprehension || ""),
                 createDataCell(docx, m.multipleChoice.application || ""),
@@ -431,10 +431,6 @@ export const exportSpecDocx = async (params: TestParams) => {
     let globalQ = 1;
     let totalMC = 0, totalTF = 0, totalSA = 0, totalEssay = 0;
 
-    // Competencies rotation
-    const comps = ["TDLL", "MHH", "GQVĐ", "GTTH", "CCPT"];
-    const getComp = (idx: number) => comps[idx % comps.length];
-
     params.topics.forEach((t, idx) => {
         const m = t.matrix;
         
@@ -446,8 +442,8 @@ export const exportSpecDocx = async (params: TestParams) => {
 
         const cells = [];
         cells.push(createDataCell(docx, idx + 1));
-        cells.push(createDataCell(docx, t.name, AlignmentType.LEFT));
-        cells.push(createDataCell(docx, t.name, AlignmentType.LEFT));
+        cells.push(createDataCell(docx, t.parentName || t.name, AlignmentType.LEFT)); // Parent Name
+        cells.push(createDataCell(docx, t.name, AlignmentType.LEFT)); // Name
         cells.push(createDataCell(docx, t.description || "Nắm vững kiến thức...", AlignmentType.LEFT));
 
         // MC
@@ -577,10 +573,10 @@ export const exportBankDocx = async (result: string, params: TestParams) => {
         topicQuestions.forEach((q, idx) => {
             const cells = [];
             
-            // Col 1: Topic (Merged for first row of topic)
+            // Col 1: Topic (Merged for first row of topic, using Parent Name if available)
             if (idx === 0) {
                 cells.push(new TableCell({
-                    children: [new Paragraph({ children: [new TextRun({ text: t.name, bold: true, font: "Times New Roman", size: 22 })], alignment: AlignmentType.CENTER })],
+                    children: [new Paragraph({ children: [new TextRun({ text: t.parentName || t.name, bold: true, font: "Times New Roman", size: 22 })], alignment: AlignmentType.CENTER })],
                     verticalAlign: VerticalAlign.CENTER,
                     rowSpan: topicQuestions.length,
                     width: { size: 15, type: WidthType.PERCENTAGE },
@@ -607,17 +603,16 @@ export const exportBankDocx = async (result: string, params: TestParams) => {
         });
     });
 
-    // Handle leftover questions (if AI generated more than matrix count)
+    // Handle leftover questions
     if (currentQIdx < parsedQuestions.length) {
         const leftovers = parsedQuestions.slice(currentQIdx);
         leftovers.forEach((q, idx) => {
              const cells = [];
              if (idx === 0) {
-                 cells.push(createDataCell(docx, "Khác", null, true, 1)); // No rowspan logic for unknown, or just flat
+                 cells.push(createDataCell(docx, "Khác", null, true, 1)); 
              } else {
-                 cells.push(createDataCell(docx, "")); // Empty cell for visual grouping if we wanted, but simplier to just label
+                 cells.push(createDataCell(docx, "")); 
              }
-             // Actually just push simple rows for leftovers
              rows.push(new TableRow({
                  children: [
                      createDataCell(docx, "Khác"),

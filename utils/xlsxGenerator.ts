@@ -67,7 +67,7 @@ export const exportMatrixToExcel = async (params: TestParams) => {
       const m = topic.matrix;
       const row = worksheet.getRow(currentRow);
       row.getCell(1).value = index + 1; row.getCell(1).style = centerStyle as any;
-      row.getCell(2).value = topic.name; row.getCell(2).style = dataStyle as any;
+      row.getCell(2).value = topic.parentName || topic.name; row.getCell(2).style = dataStyle as any;
       row.getCell(3).value = topic.name; row.getCell(3).style = dataStyle as any;
 
       const fill = (c: number, val: number) => { row.getCell(c).value = val > 0 ? val : ""; row.getCell(c).style = centerStyle as any; };
