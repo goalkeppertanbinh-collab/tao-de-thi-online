@@ -1,9 +1,10 @@
 
-import React, { useState, useRef, useMemo } from "react";
+import React, { useState, useRef, useMemo, useEffect } from "react";
 import { TestParams, Topic, TestSetConfig, LevelCounts } from "../types";
 import { GRADES, DURATIONS } from "../constants";
+import { CURRICULUM_DATA, CurriculumStandard } from "../data/curriculumData";
 import { 
-  Key, Eye, EyeOff, Files, Settings2, Trash2, Upload, FileText, Grid3X3, FileInput, Shuffle, CopyX, Plus, ListChecks, Calculator, MessageSquareText
+  Key, Eye, EyeOff, Files, Settings2, Trash2, Upload, FileText, Grid3X3, FileInput, Shuffle, CopyX, Plus, ListChecks, Calculator, MessageSquareText, Lightbulb, BookOpen
 } from "lucide-react";
 
 interface InputFormProps {
@@ -24,10 +25,40 @@ const InputForm: React.FC<InputFormProps> = ({
   const [showApiKey, setShowApiKey] = useState(false);
   const [matrixTab, setMatrixTab] = useState<"manual" | "file">("manual");
   
+  // Suggestions
+  const [suggestions, setSuggestions] = useState<CurriculumStandard | null>(null);
+
   // Matrix input buffer
   const [matrixInput, setMatrixInput] = useState<string[][]>(Array(4).fill(null).map(() => Array(3).fill("")));
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // --- AUTO-SUGGEST LOGIC ---
+  useEffect(() => {
+    if (!newTopicName.trim()) {
+        setSuggestions(null);
+        return;
+    }
+
+    const lowerName = newTopicName.toLowerCase();
+    // 1. Filter by Grade first
+    const gradeData = CURRICULUM_DATA.filter(item => item.grade === params.grade);
+    
+    // 2. Find best match by keyword
+    const match = gradeData.find(item => 
+        item.keywords.some(k => lowerName.includes(k)) || 
+        item.topic.toLowerCase().includes(lowerName)
+    );
+
+    setSuggestions(match || null);
+  }, [newTopicName, params.grade]);
+
+  const addSuggestionToDesc = (text: string) => {
+      setNewTopicDescription(prev => {
+          const prefix = prev.trim() ? "\n" : "";
+          return prev + prefix + "- " + text;
+      });
+  };
 
   const safeParse = (val: string) => {
     const n = parseFloat(val);
@@ -322,13 +353,59 @@ const InputForm: React.FC<InputFormProps> = ({
                                   />
                               </div>
 
-                              <div className="mb-4">
+                              {/* SUGGESTION UI */}
+                              {suggestions && (
+                                <div className="mb-3 bg-blue-50 border border-blue-100 rounded-lg p-2.5">
+                                    <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-800 mb-2">
+                                        <Lightbulb className="w-3 h-3 text-yellow-500" />
+                                        Gợi ý cho: "{suggestions.topic}"
+                                    </div>
+                                    <div className="space-y-2">
+                                        {suggestions.content.nb.length > 0 && (
+                                            <div className="flex flex-wrap gap-1">
+                                                <span className="text-[10px] font-bold text-slate-500 w-full">Biết:</span>
+                                                {suggestions.content.nb.map((item, i) => (
+                                                    <button key={i} onClick={() => addSuggestionToDesc(item)} className="px-2 py-1 bg-white border border-blue-200 rounded text-[10px] text-slate-600 hover:bg-blue-100 hover:text-blue-700 transition-colors text-left truncate max-w-full">
+                                                        {item}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {suggestions.content.th.length > 0 && (
+                                            <div className="flex flex-wrap gap-1">
+                                                <span className="text-[10px] font-bold text-slate-500 w-full">Hiểu:</span>
+                                                {suggestions.content.th.map((item, i) => (
+                                                    <button key={i} onClick={() => addSuggestionToDesc(item)} className="px-2 py-1 bg-white border border-green-200 rounded text-[10px] text-slate-600 hover:bg-green-100 hover:text-green-700 transition-colors text-left truncate max-w-full">
+                                                        {item}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {suggestions.content.vd.length > 0 && (
+                                            <div className="flex flex-wrap gap-1">
+                                                <span className="text-[10px] font-bold text-slate-500 w-full">Vận dụng:</span>
+                                                {suggestions.content.vd.map((item, i) => (
+                                                    <button key={i} onClick={() => addSuggestionToDesc(item)} className="px-2 py-1 bg-white border border-orange-200 rounded text-[10px] text-slate-600 hover:bg-orange-100 hover:text-orange-700 transition-colors text-left truncate max-w-full">
+                                                        {item}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                              )}
+
+                              <div className="mb-4 relative">
                                   <textarea 
                                     value={newTopicDescription}
                                     onChange={(e) => setNewTopicDescription(e.target.value)}
-                                    placeholder="Gợi ý chi tiết (Tùy chọn). VD: Tập trung vào bài toán thực tế, sử dụng hình học phẳng..."
+                                    placeholder="Gợi ý chi tiết (Tùy chọn). Chọn từ gợi ý trên hoặc tự nhập..."
                                     className="w-full px-3 py-2 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-200 h-16 resize-none"
                                   />
+                                  <div className="absolute right-2 bottom-2 text-[10px] text-slate-400 pointer-events-none">
+                                      <BookOpen className="w-3 h-3 inline mr-1" />
+                                      {newTopicDescription.length} chars
+                                  </div>
                               </div>
 
                               <div className="grid grid-cols-6 gap-2 mb-2 text-[10px] font-bold uppercase text-slate-400 text-center">
