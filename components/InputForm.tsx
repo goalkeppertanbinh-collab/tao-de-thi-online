@@ -108,23 +108,41 @@ const InputForm: React.FC<InputFormProps> = ({
   // --- SCORE CALCULATOR ---
   const totalScore = useMemo(() => {
     let mcCount = 0, tfCount = 0, saCount = 0, esCount = 0;
-    
+    let scoreRec = 0, scoreComp = 0, scoreApp = 0; // Breakdown scores
+
     const sumL = (l: LevelCounts) => l.recognition + l.comprehension + l.application;
+    const { multipleChoice: pMC, trueFalse: pTF, shortAnswer: pSA, essay: pES } = params.pointValues;
     
     params.topics.forEach(t => {
+      // Counts
       mcCount += sumL(t.matrix.multipleChoice);
       tfCount += sumL(t.matrix.trueFalse);
       saCount += sumL(t.matrix.shortAnswer);
       esCount += sumL(t.matrix.essay);
+
+      // Score Breakdown
+      // Recognition (Biết)
+      scoreRec += (t.matrix.multipleChoice.recognition * pMC) +
+                  (t.matrix.trueFalse.recognition * pTF) +
+                  (t.matrix.shortAnswer.recognition * pSA) +
+                  (t.matrix.essay.recognition * pES);
+      
+      // Comprehension (Hiểu)
+      scoreComp += (t.matrix.multipleChoice.comprehension * pMC) +
+                   (t.matrix.trueFalse.comprehension * pTF) +
+                   (t.matrix.shortAnswer.comprehension * pSA) +
+                   (t.matrix.essay.comprehension * pES);
+
+      // Application (Vận dụng)
+      scoreApp += (t.matrix.multipleChoice.application * pMC) +
+                  (t.matrix.trueFalse.application * pTF) +
+                  (t.matrix.shortAnswer.application * pSA) +
+                  (t.matrix.essay.application * pES);
     });
 
-    const score = 
-      (mcCount * params.pointValues.multipleChoice) +
-      (tfCount * params.pointValues.trueFalse) +
-      (saCount * params.pointValues.shortAnswer) +
-      (esCount * params.pointValues.essay);
+    const score = scoreRec + scoreComp + scoreApp;
 
-    return { score, mcCount, tfCount, saCount, esCount };
+    return { score, mcCount, tfCount, saCount, esCount, scoreRec, scoreComp, scoreApp };
   }, [params.topics, params.pointValues]);
 
   // --- SET LOGIC ---
@@ -550,18 +568,35 @@ const InputForm: React.FC<InputFormProps> = ({
                           </div>
 
                           {/* CALCULATOR */}
-                          <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200 text-yellow-900">
-                              <h4 className="text-xs font-bold uppercase mb-2 flex items-center gap-2"><Calculator className="w-4 h-4" /> Tổng điểm dự kiến</h4>
-                              <div className="flex justify-between items-end">
-                                  <div className="text-xs space-y-1">
-                                      <div>Số câu TN: <b>{totalScore.mcCount}</b></div>
-                                      <div>Số câu Đ/S: <b>{totalScore.tfCount}</b></div>
-                                      <div>Số câu TLN: <b>{totalScore.saCount}</b></div>
-                                      <div>Số câu TL: <b>{totalScore.esCount}</b></div>
+                          <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200 text-yellow-900 shadow-sm">
+                              <h4 className="text-xs font-bold uppercase mb-3 flex items-center gap-2 border-b border-yellow-200 pb-2"><Calculator className="w-4 h-4" /> Tổng điểm dự kiến</h4>
+                              
+                              <div className="grid grid-cols-2 gap-4 mb-3">
+                                  <div className="text-xs space-y-1.5">
+                                      <div className="flex justify-between"><span>Số câu TN:</span> <b>{totalScore.mcCount}</b></div>
+                                      <div className="flex justify-between"><span>Số câu Đ/S:</span> <b>{totalScore.tfCount}</b></div>
+                                      <div className="flex justify-between"><span>Số câu TLN:</span> <b>{totalScore.saCount}</b></div>
+                                      <div className="flex justify-between"><span>Số câu TL:</span> <b>{totalScore.esCount}</b></div>
                                   </div>
-                                  <div className="text-right">
-                                      <div className="text-3xl font-bold">{totalScore.score.toFixed(2)}</div>
-                                      <div className="text-[10px] font-medium opacity-75">trên thang điểm 10</div>
+                                  <div className="text-right flex flex-col justify-end">
+                                      <div className="text-4xl font-bold text-yellow-600 leading-none">{totalScore.score.toFixed(2)}</div>
+                                      <div className="text-[10px] font-medium opacity-75 mt-1">trên thang điểm 10</div>
+                                  </div>
+                              </div>
+
+                              {/* Breakdown by Cognitive Level */}
+                              <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-yellow-200">
+                                  <div className="bg-white/50 rounded p-1.5">
+                                      <div className="text-[10px] font-bold text-slate-500 uppercase mb-0.5">Biết</div>
+                                      <div className="text-sm font-bold text-yellow-700">{totalScore.scoreRec.toFixed(2)}đ</div>
+                                  </div>
+                                  <div className="bg-white/50 rounded p-1.5">
+                                      <div className="text-[10px] font-bold text-slate-500 uppercase mb-0.5">Hiểu</div>
+                                      <div className="text-sm font-bold text-yellow-700">{totalScore.scoreComp.toFixed(2)}đ</div>
+                                  </div>
+                                  <div className="bg-white/50 rounded p-1.5">
+                                      <div className="text-[10px] font-bold text-slate-500 uppercase mb-0.5">Vận dụng</div>
+                                      <div className="text-sm font-bold text-yellow-700">{totalScore.scoreApp.toFixed(2)}đ</div>
                                   </div>
                               </div>
                           </div>
