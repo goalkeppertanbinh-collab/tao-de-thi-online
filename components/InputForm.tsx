@@ -4,7 +4,7 @@ import { TestParams, Topic, TestSetConfig, LevelCounts } from "../types";
 import { GRADES, DURATIONS } from "../constants";
 import { CURRICULUM_DATA, CurriculumStandard } from "../data/curriculumData";
 import { 
-  Key, Eye, EyeOff, Files, Settings2, Trash2, Upload, FileText, Grid3X3, FileInput, Shuffle, CopyX, Plus, ListChecks, Calculator, MessageSquareText, Lightbulb, BookOpen, ChevronRight, X, FolderTree
+  Key, Eye, EyeOff, Files, Settings2, Trash2, Upload, FileText, Grid3X3, FileInput, Shuffle, CopyX, Plus, ListChecks, Calculator, MessageSquareText, Lightbulb, BookOpen, ChevronRight, X, FolderTree, PenLine, List
 } from "lucide-react";
 
 interface InputFormProps {
@@ -25,9 +25,9 @@ const InputForm: React.FC<InputFormProps> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
   const [matrixTab, setMatrixTab] = useState<"manual" | "file">("manual");
+  const [inputMode, setInputMode] = useState<"select" | "text">("select"); // Toggle between Dropdown and Manual Text
   
   // Suggestions State
-  const [suggestionList, setSuggestionList] = useState<CurriculumStandard[]>([]);
   const [selectedStandard, setSelectedStandard] = useState<CurriculumStandard | null>(null);
 
   // Matrix input buffer
@@ -35,44 +35,62 @@ const InputForm: React.FC<InputFormProps> = ({
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // --- AUTO-SUGGEST LOGIC ---
+  // --- DERIVED DATA FOR DROPDOWNS ---
+  const gradeData = useMemo(() => 
+    CURRICULUM_DATA.filter(item => item.grade === params.grade), 
+  [params.grade]);
+
+  const availableChapters = useMemo(() => 
+    [...new Set(gradeData.map(item => item.parentTopic))], 
+  [gradeData]);
+
+  const availableSubTopics = useMemo(() => 
+    gradeData.filter(item => item.parentTopic === newParentTopic),
+  [gradeData, newParentTopic]);
+
+  // --- EFFECTS ---
+  
+  // Reset fields when Grade changes
   useEffect(() => {
+    setNewParentTopic("");
+    setNewTopicName("");
+    setSelectedStandard(null);
+  }, [params.grade]);
+
+  // When Manual Input Name changes, try to fuzzy match for suggestions
+  useEffect(() => {
+    if (inputMode === 'select') return; // Don't run fuzzy search in select mode
+
     if (!newTopicName.trim()) {
-        setSuggestionList([]);
         setSelectedStandard(null);
         return;
     }
 
     const lower = newTopicName.toLowerCase();
-    const gradeData = CURRICULUM_DATA.filter(item => item.grade === params.grade);
-    
-    // 1. Check for exact match to show content immediately
+    // Check for exact match first
     const exactMatch = gradeData.find(item => item.topic.toLowerCase() === lower);
     if (exactMatch) {
         setSelectedStandard(exactMatch);
         if (!newParentTopic && exactMatch.parentTopic) {
             setNewParentTopic(exactMatch.parentTopic);
         }
-        setSuggestionList([]); 
-        return;
+    } else {
+       setSelectedStandard(null);
     }
+  }, [newTopicName, params.grade, inputMode, gradeData, newParentTopic]);
 
-    // 2. Fuzzy search for branching candidates
-    const matches = gradeData.filter(item => 
-        item.topic.toLowerCase().includes(lower) || 
-        item.parentTopic.toLowerCase().includes(lower) ||
-        item.keywords.some(k => lower.includes(k))
-    );
+  const handleParentSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const val = e.target.value;
+      setNewParentTopic(val);
+      setNewTopicName(""); // Reset subtopic when parent changes
+      setSelectedStandard(null);
+  };
 
-    setSuggestionList(matches);
-    setSelectedStandard(null);
-
-  }, [newTopicName, params.grade]);
-
-  const handleSelectSuggestionTopic = (item: CurriculumStandard) => {
-      setNewTopicName(item.topic);
-      setNewParentTopic(item.parentTopic); // Auto-fill parent topic
-      // The useEffect will trigger next render, match exact, and show content
+  const handleSubTopicSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const val = e.target.value;
+      setNewTopicName(val);
+      const standard = availableSubTopics.find(t => t.topic === val);
+      setSelectedStandard(standard || null);
   };
 
   const addSuggestionToDesc = (text: string) => {
@@ -166,16 +184,20 @@ const InputForm: React.FC<InputFormProps> = ({
       } else {
         setParams((prev) => ({ ...prev, topics: [...prev.topics, newTopicData] }));
       }
+      // Reset form but keep parent topic for faster entry of same chapter
       setNewTopicName("");
-      setNewParentTopic("");
+      // setNewParentTopic(""); // Optional: keep parent topic for workflow flow
       setNewTopicDescription("");
-      setSuggestionList([]);
       setSelectedStandard(null);
       setMatrixInput(Array(4).fill(null).map(() => Array(3).fill("")));
     }
   };
 
   const handleEditTopic = (topic: Topic) => {
+    // Switch to manual mode if the topic isn't in the dropdowns (legacy or custom)
+    const exists = gradeData.some(i => i.topic === topic.name);
+    setInputMode(exists ? 'select' : 'text');
+
     setNewTopicName(topic.name);
     setNewParentTopic(topic.parentName || "");
     setNewTopicDescription(topic.description || "");
@@ -187,6 +209,10 @@ const InputForm: React.FC<InputFormProps> = ({
       [m.shortAnswer.recognition, m.shortAnswer.comprehension, m.shortAnswer.application].map(String),
       [m.essay.recognition, m.essay.comprehension, m.essay.application].map(String),
     ]);
+    
+    // Attempt to match standard for editing
+    const standard = gradeData.find(t => t.topic === topic.name);
+    setSelectedStandard(standard || null);
   };
 
   const renderMatrixRow = (label: string, rowIdx: number, pointKey: keyof typeof params.pointValues) => (
@@ -368,60 +394,83 @@ const InputForm: React.FC<InputFormProps> = ({
                       {/* INPUT SECTION */}
                       <div className="lg:col-span-5 space-y-4">
                           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                              <h4 className="font-bold text-slate-700 mb-3">{editingId ? "Chỉnh sửa chủ đề" : "Thêm chủ đề mới"}</h4>
+                              <div className="flex justify-between items-center mb-3">
+                                <h4 className="font-bold text-slate-700">{editingId ? "Chỉnh sửa chủ đề" : "Thêm chủ đề mới"}</h4>
+                                <button 
+                                  onClick={() => {
+                                    setInputMode(prev => prev === 'select' ? 'text' : 'select');
+                                    setNewParentTopic("");
+                                    setNewTopicName("");
+                                    setSelectedStandard(null);
+                                  }}
+                                  className="text-[10px] flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-200 hover:bg-blue-100"
+                                >
+                                  {inputMode === 'select' ? <><PenLine className="w-3 h-3"/> Nhập thủ công</> : <><List className="w-3 h-3"/> Chọn danh sách</>}
+                                </button>
+                              </div>
                               
-                              <div className="grid grid-cols-2 gap-3 mb-3">
+                              <div className="grid grid-cols-1 gap-3 mb-3">
+                                  {/* Parent Topic Input */}
                                   <div>
                                       <label className="block text-[10px] text-slate-500 font-bold mb-1">Chủ đề lớn (Chương)</label>
-                                      <input 
-                                          type="text" 
+                                      {inputMode === 'select' ? (
+                                        <select 
                                           value={newParentTopic} 
-                                          onChange={(e) => setNewParentTopic(e.target.value)}
-                                          placeholder="VD: Số tự nhiên"
-                                          className="w-full px-3 py-1.5 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-200"
-                                      />
-                                  </div>
-                                  <div>
-                                      <label className="block text-[10px] text-slate-500 font-bold mb-1">Chủ đề nhỏ (Nội dung)</label>
-                                      <div className="relative">
+                                          onChange={handleParentSelect} 
+                                          className="w-full text-xs border-slate-300 rounded-md bg-white py-1.5 focus:ring-2 focus:ring-blue-200"
+                                        >
+                                          <option value="">-- Chọn Chương/Chủ đề lớn --</option>
+                                          {availableChapters.map(chap => (
+                                            <option key={chap} value={chap}>{chap}</option>
+                                          ))}
+                                        </select>
+                                      ) : (
                                         <input 
                                             type="text" 
-                                            value={newTopicName} 
-                                            onChange={(e) => setNewTopicName(e.target.value)}
-                                            placeholder="Gõ để tìm..."
+                                            value={newParentTopic} 
+                                            onChange={(e) => setNewParentTopic(e.target.value)}
+                                            placeholder="VD: Số tự nhiên"
                                             className="w-full px-3 py-1.5 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-200"
                                         />
-                                        {newTopicName && <button onClick={() => setNewTopicName("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X className="w-3 h-3"/></button>}
-                                      </div>
+                                      )}
+                                  </div>
+
+                                  {/* Sub Topic Input */}
+                                  <div>
+                                      <label className="block text-[10px] text-slate-500 font-bold mb-1">Chủ đề nhỏ (Nội dung)</label>
+                                      {inputMode === 'select' ? (
+                                        <select 
+                                          value={newTopicName} 
+                                          onChange={handleSubTopicSelect}
+                                          disabled={!newParentTopic}
+                                          className="w-full text-xs border-slate-300 rounded-md bg-white py-1.5 focus:ring-2 focus:ring-blue-200 disabled:bg-slate-100 disabled:text-slate-400"
+                                        >
+                                          <option value="">-- Chọn Nội dung --</option>
+                                          {availableSubTopics.map(t => (
+                                            <option key={t.topic} value={t.topic}>{t.topic}</option>
+                                          ))}
+                                        </select>
+                                      ) : (
+                                        <div className="relative">
+                                          <input 
+                                              type="text" 
+                                              value={newTopicName} 
+                                              onChange={(e) => setNewTopicName(e.target.value)}
+                                              placeholder="Nhập tên nội dung..."
+                                              className="w-full px-3 py-1.5 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-200"
+                                          />
+                                          {newTopicName && <button onClick={() => setNewTopicName("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X className="w-3 h-3"/></button>}
+                                        </div>
+                                      )}
                                   </div>
                               </div>
 
-                              {/* BRANCHING SUGGESTIONS UI */}
-                              {suggestionList.length > 0 && !selectedStandard && (
-                                <div className="mb-3 bg-indigo-50 border border-indigo-100 rounded-lg p-2.5">
-                                    <div className="flex items-center gap-1.5 text-xs font-semibold text-indigo-800 mb-2">
-                                        <Lightbulb className="w-3 h-3 text-yellow-500" />
-                                        Gợi ý chủ đề nhỏ (Chọn để điền):
-                                    </div>
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {suggestionList.map((item, i) => (
-                                            <button 
-                                                key={i} 
-                                                onClick={() => handleSelectSuggestionTopic(item)} 
-                                                className="px-2 py-1 bg-white border border-indigo-200 rounded text-[10px] text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 transition-colors flex items-center gap-1 shadow-sm"
-                                            >
-                                                {item.topic} <span className="text-[9px] text-indigo-400">({item.parentTopic})</span> <ChevronRight className="w-3 h-3 opacity-50" />
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                              )}
-
+                              {/* SELECTED STANDARD SUGGESTIONS (Triggered by dropdown) */}
                               {selectedStandard && (
                                 <div className="mb-3 bg-blue-50 border border-blue-100 rounded-lg p-2.5 animate-in fade-in zoom-in-95 duration-200">
                                     <div className="flex items-center justify-between gap-1.5 text-xs font-semibold text-blue-800 mb-2">
-                                        <span className="flex items-center gap-1"><Lightbulb className="w-3 h-3 text-yellow-500" /> Gợi ý cho: "{selectedStandard.topic}"</span>
-                                        <button onClick={() => setSelectedStandard(null)} className="text-[10px] text-slate-400 hover:text-slate-600">Đóng</button>
+                                        <span className="flex items-center gap-1"><Lightbulb className="w-3 h-3 text-yellow-500" /> Gợi ý nội dung:</span>
+                                        <button onClick={() => setSelectedStandard(null)} className="text-[10px] text-slate-400 hover:text-slate-600">Ẩn</button>
                                     </div>
                                     <div className="space-y-2 max-h-[150px] overflow-y-auto custom-scrollbar pr-1">
                                         {selectedStandard.content.nb.length > 0 && (

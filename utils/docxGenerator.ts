@@ -532,9 +532,28 @@ export const exportBankDocx = async (result: string, params: TestParams) => {
     const fileSaverModule = await import("file-saver");
     const saveAs = fileSaverModule.saveAs || (fileSaverModule as any).default;
 
-    // 1. Parse Markdown Table from Result
-    const bankSection = result.split(/##\s*NGÂN HÀNG CÂU HỎI/i)[1];
-    if (!bankSection) { alert("Không tìm thấy dữ liệu ngân hàng câu hỏi."); return; }
+    // 1. IMPROVED PARSING STRATEGY
+    // Look for the "NGÂN HÀNG CÂU HỎI" section using a more robust regex
+    const headerRegex = /(?:^|\n)#{1,3}\s*NGÂN\s+HÀNG\s+CÂU\s+HỎI/i;
+    const parts = result.split(headerRegex);
+    
+    // Take the last part if found, assuming the bank is at the end
+    let bankSection = parts.length > 1 ? parts[parts.length - 1] : null;
+
+    // Fallback: If explicit header missing, look for the table structure (Header row)
+    if (!bankSection) {
+        // Look for typical headers in the bank table (Mức độ, Nội dung, Đáp án)
+        const tableHeaderRegex = /\|\s*Câu\s*\|\s*Mức độ\s*\|\s*Nội dung/i;
+        const match = result.match(tableHeaderRegex);
+        if (match && match.index !== undefined) {
+             bankSection = result.substring(match.index);
+        }
+    }
+
+    if (!bankSection) { 
+        alert("Không tìm thấy dữ liệu ngân hàng câu hỏi. Hãy kiểm tra kết quả hiển thị xem có phần 'NGÂN HÀNG CÂU HỎI' không."); 
+        return; 
+    }
 
     const lines = bankSection.split("\n").filter(line => line.trim().startsWith("|") && !line.includes("---"));
     const dataRows = lines.slice(1); // Skip header row

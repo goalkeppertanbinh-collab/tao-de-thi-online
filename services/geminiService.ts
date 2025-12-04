@@ -12,6 +12,18 @@ CẤU TRÚC ĐỀ THI:
 3. Phần III: Trắc nghiệm Trả lời ngắn.
 4. Phần IV: Tự luận.
 
+QUY ĐỊNH ĐỊNH DẠNG HIỂN THỊ (NGHIÊM NGẶT):
+1. TIÊU ĐỀ CÂU HỎI TRONG ĐỀ THI:
+   - Phải hiển thị ĐIỂM SỐ của câu đó, KHÔNG hiển thị mức độ (NB, TH, VD).
+   - Định dạng: **Câu [N] ([Điểm] điểm):** [Nội dung câu hỏi]
+   - Ví dụ: "Câu 1 (0,25 điểm): Tập hợp A gồm..." 
+   - KHÔNG ĐƯỢC VIẾT: "Câu 1 (NB):" hay "Câu 1 (Nhận biết):".
+
+2. BẢNG ĐÁP ÁN (Đặc biệt là phần Tự Luận):
+   - TUYỆT ĐỐI KHÔNG sử dụng thẻ <br> hay <br/> trong Markdown Table.
+   - Nếu nội dung dài hoặc có nhiều bước, hãy dùng dấu chấm phẩy (;) hoặc số thứ tự (1. 2.) trên cùng một dòng.
+   - Ví dụ: "Bước 1: Tính Delta; Bước 2: Tìm nghiệm".
+
 QUY TRÌNH TẠO ĐỀ (QUAN TRỌNG):
 Khi người dùng yêu cầu tạo một Bộ đề gồm nhiều mã (Ví dụ: 801, 802):
 1. Bạn phải viết ĐẦY ĐỦ nội dung đề thi cho mã 801.
@@ -43,9 +55,10 @@ Với mỗi bộ đề, bạn phải tạo ra Bảng Đáp Án tổng hợp so s
 
 ### IV. Tự luận:
 (Tự luận KHÔNG tráo đổi nội dung giữa các mã đề trong cùng 1 bộ. Chỉ cần liệt kê đáp án/hướng dẫn chấm chung).
+LƯU Ý: TUYỆT ĐỐI KHÔNG sử dụng thẻ <br>.
 | Câu | Nội dung | Điểm |
 |---|---|---|
-| 19 | ... | 0,5 |
+| 19 | a) ... ; b) ... | 0,5 |
 
 YÊU CẦU VỀ TRỘN ĐỀ (SHUFFLING):
 - Nếu bật trộn: CHỈ trộn thứ tự câu và đáp án ở Phần I, II, III giữa các mã đề.
@@ -70,11 +83,14 @@ CẤU TRÚC OUTPUT ĐỂ TÁCH FILE:
 [Lặp lại cho các Bộ đề khác...]
 
 ## NGÂN HÀNG CÂU HỎI
-Lập bảng ngân hàng câu hỏi theo thứ tự các CHỦ ĐỀ/CHƯƠNG trong Ma trận.
-Ví dụ: Liệt kê hết câu hỏi của Chủ đề 1, rồi đến Chủ đề 2...
+Lập bảng ngân hàng câu hỏi bằng cách **TRÍCH XUẤT NỘI DUNG TỪ MÃ ĐỀ ĐẦU TIÊN** của mỗi Bộ đề.
+(Ví dụ: Bộ 1 có mã 601, 602 -> Lấy toàn bộ câu hỏi và đáp án của mã 601 đưa vào đây. Nếu có Bộ 2 mã 603, 604 -> Lấy tiếp câu hỏi của mã 603 đưa vào đây).
+Bảng phải chứa đầy đủ câu hỏi của tất cả các phần (TN, Đ/S, TLN, TL).
+
 | Câu | Mức độ | Nội dung câu hỏi | Đáp án | Thang điểm |
 |---|---|---|---|---|
-| 1 | NB | ... | ... | ... |
+| 1 | NB | [Nội dung lấy từ Mã đề đầu tiên] | [Đáp án] | ... |
+| 2 | TH | ... | ... | ... |
 `;
 };
 
