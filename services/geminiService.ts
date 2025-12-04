@@ -210,17 +210,66 @@ export const generateMathTest = async (params: TestParams, apiKey: string): Prom
   }
 };
 
-export const generateTikZCode = async (description: string, apiKey: string): Promise<string> => {
+export const generateGeometryPlan = async (description: string, apiKey: string): Promise<string> => {
     try {
         if (!apiKey) throw new Error("API Key chưa được cung cấp.");
         const ai = new GoogleGenAI({ apiKey: apiKey });
         const modelId = "gemini-2.5-flash";
 
+        const prompt = `Bạn là một chuyên gia hình học. Nhiệm vụ của bạn là phân tích yêu cầu vẽ hình sau đây để chuẩn bị vẽ bằng LaTeX TikZ.
+        
+        Yêu cầu người dùng: "${description}"
+
+        Hãy liệt kê các bước logic để vẽ hình này một cách chính xác.
+        - Xác định các điểm chính và tọa độ giả định (nếu cần).
+        - Xác định thứ tự vẽ (điểm trước, đường sau, rồi đến nhãn).
+        - Liệt kê các đường phụ, góc vuông, hoặc ký hiệu cần thiết.
+        
+        TRẢ LỜI NGẮN GỌN DƯỚI DẠNG DANH SÁCH CÁC BƯỚC (Tiếng Việt). KHÔNG VIẾT CODE.`;
+
         const response = await ai.models.generateContent({
             model: modelId,
-            contents: `Viết mã LaTeX TikZ để vẽ hình học sau: "${description}".
-            Chỉ trả về mã nằm trong block code \`\`\`latex ... \`\`\`. 
-            Giữ mã đơn giản, đẹp, dễ render. Không giải thích thêm.`,
+            contents: prompt,
+        });
+        
+        return response.text || "Không thể tạo kế hoạch vẽ.";
+    } catch (error) {
+        console.error("Plan Error:", error);
+        throw error;
+    }
+};
+
+export const generateTikZCode = async (description: string, plan: string, apiKey: string): Promise<string> => {
+    try {
+        if (!apiKey) throw new Error("API Key chưa được cung cấp.");
+        const ai = new GoogleGenAI({ apiKey: apiKey });
+        const modelId = "gemini-2.5-flash";
+
+        const prompt = `Viết mã LaTeX TikZ để vẽ hình học dựa trên yêu cầu và kế hoạch sau.
+        
+        1. Yêu cầu gốc: "${description}"
+        2. Kế hoạch thực hiện (đã được người dùng duyệt):
+        ${plan}
+
+        YÊU CẦU OUTPUT QUAN TRỌNG:
+        - Output phải là một tài liệu LaTeX HOÀN CHỈNH (Standalone) để có thể copy và chạy ngay trên Overleaf mà không báo lỗi thiếu thư viện.
+        - Sử dụng cấu trúc:
+          \\documentclass[tikz,border=5mm]{standalone}
+          \\usepackage{tkz-euclide}
+          \\usetikzlibrary{calc,angles,quotes,intersections,through,backgrounds,patterns}
+          \\begin{document}
+            \\begin{tikzpicture}
+              ... code vẽ hình ...
+            \\end{tikzpicture}
+          \\end{document}
+        
+        - Code phải clean, đẹp, căn chỉnh tọa độ hợp lý để hình không bị méo.
+        - Chỉ trả về mã nằm trong block code \`\`\`latex ... \`\`\`.
+        - Không giải thích thêm.`;
+
+        const response = await ai.models.generateContent({
+            model: modelId,
+            contents: prompt,
         });
         
         const text = response.text || "";

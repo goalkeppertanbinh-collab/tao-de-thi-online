@@ -92,7 +92,7 @@ const App: React.FC = () => {
               <ResultDisplay result={state.result} error={state.error} params={params} isLoading={state.isLoading} />
            )}
            {activeTab === "tikz" && (
-              <TikZGenerator apiKey={apiKey} />
+              <TikZGenerator apiKey={apiKey} setApiKey={handleApiKeyChange} />
            )}
         </div>
       </main>
