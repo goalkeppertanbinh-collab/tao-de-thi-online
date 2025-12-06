@@ -188,6 +188,22 @@ ${additionalRequest ? `YÊU CẦU THÊM: "${additionalRequest}"` : ""}
   return finalPrompt;
 };
 
+// --- HELPER: Convert File to Base64 for Gemini ---
+const fileToGenerativePart = async (file: File) => {
+  const base64EncodedDataPromise = new Promise<string>((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (reader.result) {
+        resolve((reader.result as string).split(',')[1]);
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+  return {
+    inlineData: { data: await base64EncodedDataPromise, mimeType: file.type },
+  };
+};
+
 export const generateMathTest = async (params: TestParams, apiKey: string): Promise<string> => {
   try {
     if (!apiKey) throw new Error("API Key chưa được cung cấp.");
@@ -210,62 +226,70 @@ export const generateMathTest = async (params: TestParams, apiKey: string): Prom
   }
 };
 
-export const generateGeometryPlan = async (description: string, apiKey: string): Promise<string> => {
+// --- NEW FUNCTION: ANALYZE IMAGE TO EXTRACT TIKZ STYLE ---
+export const analyzeTikZStyle = async (imageFile: File, apiKey: string): Promise<string> => {
     try {
         if (!apiKey) throw new Error("API Key chưa được cung cấp.");
         const ai = new GoogleGenAI({ apiKey: apiKey });
         const modelId = "gemini-2.5-flash";
 
-        const prompt = `Bạn là một chuyên gia hình học. Nhiệm vụ của bạn là phân tích yêu cầu vẽ hình sau đây để chuẩn bị vẽ bằng LaTeX TikZ.
+        const imagePart = await fileToGenerativePart(imageFile);
         
-        Yêu cầu người dùng: "${description}"
-
-        Hãy liệt kê các bước logic để vẽ hình này một cách chính xác.
-        - Xác định các điểm chính và tọa độ giả định (nếu cần).
-        - Xác định thứ tự vẽ (điểm trước, đường sau, rồi đến nhãn).
-        - Liệt kê các đường phụ, góc vuông, hoặc ký hiệu cần thiết.
+        const prompt = `
+        Bạn là chuyên gia về LaTeX và TikZ.
+        Hãy phân tích hình ảnh này và trích xuất "Phong cách vẽ TikZ" (TikZ Style) để tôi có thể dùng lại phong cách này cho các hình khác.
         
-        TRẢ LỜI NGẮN GỌN DƯỚI DẠNG DANH SÁCH CÁC BƯỚC (Tiếng Việt). KHÔNG VIẾT CODE.`;
+        Hãy xác định và liệt kê chi tiết:
+        1. Thư viện chính có vẻ được sử dụng (ví dụ: tkz-euclide, calc, angles, ...).
+        2. Phong cách điểm (Point style): Kích thước, màu sắc (fill/draw), hình dáng (circle, dot).
+        3. Phong cách đường (Line style): Độ dày (thick, thin, semithick), màu sắc, kiểu nét (dashed, solid).
+        4. Phong cách nhãn (Label style): Font chữ, kích thước, vị trí tương đối so với điểm.
+        5. Các ký hiệu đặc biệt: Ký hiệu góc vuông, góc bằng nhau, đoạn thẳng bằng nhau.
+        
+        TRẢ VỀ MỘT ĐOẠN VĂN BẢN MÔ TẢ NGẮN GỌN CÁC LỆNH/STYLE CẦN DÙNG.
+        Ví dụ:
+        - Dùng \\usepackage{tkz-euclide}
+        - Điểm: \\tkzDrawPoints[size=3,fill=black]
+        - Đường: thick, color=blue!70!black
+        ...
+        `;
 
         const response = await ai.models.generateContent({
             model: modelId,
-            contents: prompt,
+            contents: [imagePart, { text: prompt }],
         });
-        
-        return response.text || "Không thể tạo kế hoạch vẽ.";
+
+        return response.text || "Không phân tích được phong cách.";
     } catch (error) {
-        console.error("Plan Error:", error);
+        console.error("Analyze Image Error:", error);
         throw error;
     }
 };
 
-export const generateTikZCode = async (description: string, plan: string, apiKey: string): Promise<string> => {
+// --- DIRECT TIKZ GENERATION ---
+export const generateTikZCode = async (description: string, apiKey: string, styleContext?: string): Promise<string> => {
     try {
         if (!apiKey) throw new Error("API Key chưa được cung cấp.");
         const ai = new GoogleGenAI({ apiKey: apiKey });
         const modelId = "gemini-2.5-flash";
 
-        const prompt = `Viết mã LaTeX TikZ để vẽ hình học dựa trên yêu cầu và kế hoạch sau.
+        const prompt = `Hãy viết code LaTeX sử dụng gói TikZ (và tkz-euclide nếu là hình học phẳng) để vẽ hình cho bài toán hình học THCS theo phong cách sách giáo khoa 'Chân trời sáng tạo'.
         
-        1. Yêu cầu gốc: "${description}"
-        2. Kế hoạch thực hiện (đã được người dùng duyệt):
-        ${plan}
+        Yêu cầu về phong cách (Style Guide):
+        - Nét vẽ: Sử dụng nét semithick (0.8pt) cho các đường chính. Đường khuất (nếu có) dùng nét đứt dashed.
+        - Màu sắc: Viền hình màu đen hoặc xanh đậm (blue!70!black). Các miền diện tích (nếu cần tô) dùng màu nhạt (fill=blue!10 hoặc orange!10) để giống phong cách hiện đại của SGK mới.
+        - Điểm và Nhãn: Các điểm (A, B, C...) dùng dấu chấm tròn nhỏ (\\fill bán kính 1.5pt), nhãn để cách điểm một khoảng vừa phải, font chữ không chân (nếu có thể) hoặc mặc định rõ ràng.
+        - Góc: Ký hiệu góc vuông hoặc vòng cung góc cần gọn gàng.
+        
+        ${styleContext ? `--------------------------------------------------\nLƯU Ý ĐẶC BIỆT TỪ PHONG CÁCH NGƯỜI DÙNG ĐÃ HỌC:\n${styleContext}\n--------------------------------------------------` : ""}
 
-        YÊU CẦU OUTPUT QUAN TRỌNG:
-        - Output phải là một tài liệu LaTeX HOÀN CHỈNH (Standalone) để có thể copy và chạy ngay trên Overleaf mà không báo lỗi thiếu thư viện.
-        - Sử dụng cấu trúc:
-          \\documentclass[tikz,border=5mm]{standalone}
-          \\usepackage{tkz-euclide}
-          \\usetikzlibrary{calc,angles,quotes,intersections,through,backgrounds,patterns}
-          \\begin{document}
-            \\begin{tikzpicture}
-              ... code vẽ hình ...
-            \\end{tikzpicture}
-          \\end{document}
-        
+        Nội dung hình vẽ:
+        ${description}
+
+        Yêu cầu Output: Chỉ xuất code trong môi trường \\begin{tikzpicture} ... \\end{tikzpicture} để tôi có thể copy vào file TeX có sẵn.
         - Code phải clean, đẹp, căn chỉnh tọa độ hợp lý để hình không bị méo.
         - Chỉ trả về mã nằm trong block code \`\`\`latex ... \`\`\`.
-        - Không giải thích thêm.`;
+        `;
 
         const response = await ai.models.generateContent({
             model: modelId,
