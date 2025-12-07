@@ -324,34 +324,51 @@ const InputForm: React.FC<InputFormProps> = ({
       }
   };
 
-  const renderMatrixRow = (label: string, rowIdx: number, pointKey: keyof typeof params.pointValues) => (
-    <div className="grid grid-cols-6 gap-2 items-center mb-2">
-       <div className="col-span-2">
-           <div className="text-xs font-bold text-slate-700">{label}</div>
-       </div>
-       <div className="col-span-1 relative">
-          <input 
-              type="number" step="0.05" min="0"
-              value={params.pointValues[pointKey]}
-              onChange={(e) => setParams(p => ({...p, pointValues: {...p.pointValues, [pointKey]: parseFloat(e.target.value)||0}}))}
-              className="w-full text-center text-xs font-bold bg-yellow-50 border border-yellow-200 rounded p-1 pl-3" 
-          />
-          <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[8px] text-slate-400">/câu</span>
-       </div>
-       {[0, 1, 2].map(col => (
-           <input 
-               key={col} type="number" min="0" 
-               value={matrixInput[rowIdx][col]} 
-               onChange={(e) => {
-                   const newG = [...matrixInput]; newG[rowIdx] = [...newG[rowIdx]]; newG[rowIdx][col] = e.target.value;
-                   setMatrixInput(newG);
-               }}
-               className="col-span-1 w-full text-center text-xs border border-slate-200 rounded p-1 focus:ring-1 focus:ring-blue-500" 
-               placeholder="0"
-           />
-       ))}
-    </div>
-  );
+  const renderMatrixRow = (label: string, rowIdx: number, pointKey: keyof typeof params.pointValues) => {
+    // Helper to identify if a level is suggested in the selected standard
+    const getLevelClass = (colIndex: number) => {
+        if (!selectedStandard) return "bg-white border-slate-200";
+        
+        // 0: NB, 1: TH, 2: VD
+        let hasContent = false;
+        if (colIndex === 0 && selectedStandard.content.nb.length > 0) hasContent = true;
+        if (colIndex === 1 && selectedStandard.content.th.length > 0) hasContent = true;
+        if (colIndex === 2 && selectedStandard.content.vd.length > 0) hasContent = true;
+
+        return hasContent 
+            ? "bg-yellow-100 border-yellow-400 font-semibold text-yellow-900 shadow-sm" 
+            : "bg-white border-slate-200";
+    };
+
+    return (
+        <div className="grid grid-cols-6 gap-2 items-center mb-2">
+        <div className="col-span-2">
+            <div className="text-xs font-bold text-slate-700">{label}</div>
+        </div>
+        <div className="col-span-1 relative">
+            <input 
+                type="number" step="0.05" min="0"
+                value={params.pointValues[pointKey]}
+                onChange={(e) => setParams(p => ({...p, pointValues: {...p.pointValues, [pointKey]: parseFloat(e.target.value)||0}}))}
+                className="w-full text-center text-xs font-bold bg-yellow-50 border border-yellow-200 rounded p-1 pl-3" 
+            />
+            <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[8px] text-slate-400">/câu</span>
+        </div>
+        {[0, 1, 2].map(col => (
+            <input 
+                key={col} type="number" min="0" 
+                value={matrixInput[rowIdx][col]} 
+                onChange={(e) => {
+                    const newG = [...matrixInput]; newG[rowIdx] = [...newG[rowIdx]]; newG[rowIdx][col] = e.target.value;
+                    setMatrixInput(newG);
+                }}
+                className={`col-span-1 w-full text-center text-xs rounded p-1 focus:ring-1 focus:ring-blue-500 border ${getLevelClass(col)} transition-colors`} 
+                placeholder="0"
+            />
+        ))}
+        </div>
+    );
+  };
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-20">

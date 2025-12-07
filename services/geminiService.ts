@@ -12,18 +12,33 @@ CẤU TRÚC ĐỀ THI:
 3. Phần III: Trắc nghiệm Trả lời ngắn.
 4. Phần IV: Tự luận.
 
-QUY ĐỊNH VỀ ĐỊNH DẠNG TOÁN HỌC (LATEX - BẮT BUỘC):
-- Tất cả các công thức toán học, biểu thức, biến số (x, y...), ký hiệu hình học (tam giác ABC...), độ dài, số đo độ... PHẢI được đặt trong cặp dấu USD ($).
-- Ví dụ đúng: "Cho tam giác $ABC$ vuông tại $A$. Tính $x$ biết $x^2 - 4 = 0$."
-- Không dùng dấu $ cho văn bản tiếng Việt thông thường.
+QUY ĐỊNH VỀ ĐỊNH DẠNG TOÁN HỌC (LATEX - CỰC KỲ QUAN TRỌNG):
+Tuyệt đối không lạm dụng dấu $. Hãy phân biệt rõ ràng giữa "Văn bản" và "Toán học".
+
+1. CHỈ sử dụng dấu $ (LaTeX) cho các ĐỐI TƯỢNG TOÁN HỌC:
+   - Biến số, tên điểm, tên hình: $x$, $y$, $A$, $B$, $\Delta ABC$, đường thẳng $d$...
+   - Công thức, phương trình, biểu thức: $y = ax + b$, $x^2 - 4 = 0$, $\sqrt{x}$...
+   - Số đo đi kèm đơn vị ký hiệu: $90^\circ$, $30cm$, $45m^2$...
+   - Các con số nằm trong phép tính hoặc so sánh: $1 < x < 5$.
+
+2. KHÔNG sử dụng dấu $ cho:
+   - Văn bản tiếng Việt thông thường: "Cho tam giác", "Tính giá trị của", "số học sinh".
+   - Số đếm thông thường hoặc số thứ tự bài/câu: "Câu 1", "Có 5 quả táo", "Bài 2".
+   - Các dấu câu của văn bản (dấu chấm, phẩy cuối câu): Đặt $x=1$. (Dấu chấm nằm ngoài $).
+
+3. VÍ DỤ:
+   - ĐÚNG: Cho tam giác $ABC$ vuông tại $A$ có cạnh $AB = 3cm$. Tính diện tích $S$.
+   - SAI (Lạm dụng): $Cho$ tam giác $ABC$ vuông tại $A$ có cạnh $AB$ = 3 $cm$. $Tính$ diện tích $S$.
 
 QUY ĐỊNH ĐỊNH DẠNG HIỂN THỊ (NGHIÊM NGẶT):
-1. TIÊU ĐỀ CÂU HỎI:
+1. TIÊU ĐỀ CÂU HỎI (Trong phần Đề thi):
    - Phải hiển thị ĐIỂM SỐ, KHÔNG hiển thị mức độ (NB, TH, VD).
    - Định dạng: **Câu [N] ([Điểm] điểm):** [Nội dung]
 
-2. ĐÁP ÁN VÀ HƯỚNG DẪN CHẤM (QUAN TRỌNG - ĐÚNG MẪU BẢNG TỔNG HỢP):
-   Phải tạo bảng so sánh đáp án của tất cả các mã đề trong bộ (Ví dụ: 901 và 902 nằm cạnh nhau).
+2. ĐÁP ÁN VÀ HƯỚNG DẪN CHẤM (QUAN TRỌNG - KHÔNG CHÉP LẠI ĐỀ):
+   - MỤC TIÊU: Tạo bảng để giáo viên chấm nhanh.
+   - TUYỆT ĐỐI KHÔNG được chép lại nội dung câu hỏi hay đề bài vào phần này. Chỉ ghi kết quả/lời giải.
+   - Phải tạo bảng so sánh đáp án của tất cả các mã đề trong bộ (Ví dụ: 901 và 902 nằm cạnh nhau).
 
    A. PHẦN TRẮC NGHIỆM (I, II, III):
    * Mẫu Bảng I (Nhiều lựa chọn):
@@ -41,15 +56,15 @@ QUY ĐỊNH ĐỊNH DẠNG HIỂN THỊ (NGHIÊM NGẶT):
    * Mẫu Bảng III (Trả lời ngắn):
    | Câu | Mã Đề [Code1] | Mã Đề [Code2] | ... | Điểm |
    |---|---|---|---|---|
-   | 15 | x = 2 | x = -2 | ... | 0,5 |
+   | 15 | $x = 2$ | $x = -2$ | ... | 0,5 |
 
-   B. PHẦN TỰ LUẬN (IV) - BẮT BUỘC KẺ BẢNG CHI TIẾT:
-   | Câu | Nội dung / Các bước giải | Điểm |
+   B. PHẦN TỰ LUẬN (IV) - BẮT BUỘC KẺ BẢNG CHI TIẾT LỜI GIẢI:
+   | Câu | Lời giải sơ lược / Các bước chấm | Điểm |
    |---|---|---|
-   | 19 | a) Viết phương trình... <br> Tính $\\Delta = ...$ (0,25 điểm) <br> => $x_1=..., x_2=...$ | 1,0 |
-   | | b) ... | |
+   | 19 | a) Phương trình hoành độ giao điểm... <br> Tính $\Delta = ...$ (0,25 điểm) <br> => $x_1=..., x_2=...$ (0,25 điểm) | 1,0 |
+   | | b) Thay x vào biểu thức P... (0,5 điểm) | |
 
-   Lưu ý phần Tự luận: Cột "Nội dung" cần trình bày lời giải vắn tắt kèm theo mức điểm thành phần trong ngoặc đơn (ví dụ: (0,25 điểm)) ngay tại bước đó.
+   Lưu ý phần Tự luận: Cột "Lời giải" chỉ ghi các bước giải vắn tắt và đáp số cuối cùng kèm thang điểm thành phần. KHÔNG chép lại đề bài "Cho phương trình...".
 
 QUY TRÌNH TẠO ĐỀ (LOGIC TRỘN):
 1. Luôn soạn thảo Mã đề đầu tiên (Mã gốc) trước.
@@ -68,10 +83,10 @@ CẤU TRÚC OUTPUT MONG MUỐN:
 ### ĐÁP ÁN VÀ HƯỚNG DẪN CHẤM (BỘ [N] - MÃ: [Mã Gốc], [Mã Trộn]...)
 
 #### I. Trắc nghiệm:
-(Bảng tổng hợp)
-...
+(Bảng tổng hợp đáp án I, II, III - KHÔNG KÈM ĐỀ)
+
 #### IV. Tự luận:
-(Bảng hướng dẫn chấm)
+(Bảng lời giải và thang điểm - KHÔNG KÈM ĐỀ)
 
 ## NGÂN HÀNG CÂU HỎI
 (Bảng tổng hợp câu hỏi nguồn từ Mã Gốc)
@@ -163,6 +178,7 @@ BỘ ĐỀ SỐ ${index + 1}:
     setInstructions += `
 3. BẢNG ĐÁP ÁN TỔNG HỢP:
    - Lập bảng so sánh đáp án của [${sourceCode}, ${derivedCodes.join(", ")}] đặt cạnh nhau.
+   - CHỈ HIỂN THỊ ĐÁP ÁN, KHÔNG CHÉP LẠI ĐỀ.
 ---------------------------------------------------
 `;
   });
