@@ -371,10 +371,10 @@ const InputForm: React.FC<InputFormProps> = ({
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-20">
+    <div className="w-full space-y-6 pb-28">
       
       {/* 1. API KEY & GENERAL CONFIG */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="space-y-4">
               {/* API Key */}
               <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
@@ -487,7 +487,7 @@ const InputForm: React.FC<InputFormProps> = ({
               </button>
           </div>
 
-          <div className="p-6">
+          <div className="p-4 lg:p-6">
               {matrixTab === "file" ? (
                   <div className="flex flex-col items-center justify-center text-center space-y-4 py-8">
                       {isAnalyzingFile ? (
@@ -544,9 +544,9 @@ const InputForm: React.FC<InputFormProps> = ({
                       )}
                   </div>
               ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                      {/* INPUT SECTION */}
-                      <div className="lg:col-span-5 space-y-4">
+                  <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 lg:gap-8">
+                      {/* INPUT SECTION - Expanded to 8 columns on extra large screens */}
+                      <div className="xl:col-span-8 lg:col-span-7 space-y-4">
                           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                               <div className="flex justify-between items-center mb-3">
                                 <h4 className="font-bold text-slate-700">{editingId ? "Chỉnh sửa chủ đề" : "Thêm chủ đề mới"}</h4>
@@ -738,10 +738,10 @@ const InputForm: React.FC<InputFormProps> = ({
                           </div>
                       </div>
 
-                      {/* LIST SECTION */}
-                      <div className="lg:col-span-7">
+                      {/* LIST SECTION - Condensed to 4 columns on extra large screens */}
+                      <div className="xl:col-span-4 lg:col-span-5">
                           <h4 className="font-bold text-slate-700 mb-3 flex items-center gap-2"><ListChecks className="w-4 h-4" /> Danh sách Chủ đề đã thêm</h4>
-                          <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar">
+                          <div className="space-y-2 max-h-[400px] lg:max-h-[600px] overflow-y-auto custom-scrollbar">
                               {params.topics.length === 0 ? (
                                   <div className="text-center py-12 text-slate-400 text-sm bg-slate-50 rounded-lg border border-dashed border-slate-200">
                                       Chưa có chủ đề nào. Hãy nhập thông tin và nhấn "Thêm vào danh sách".
@@ -756,7 +756,7 @@ const InputForm: React.FC<InputFormProps> = ({
                                                       <div className="text-xs font-semibold text-slate-500 flex items-center gap-1">
                                                           <FolderTree className="w-3 h-3"/> {t.parentName || "Chương ..."}
                                                       </div>
-                                                      <div className="font-bold text-sm text-slate-800">{t.name}</div>
+                                                      <div className="font-bold text-sm text-slate-800 line-clamp-2">{t.name}</div>
                                                   </div>
                                               </div>
                                               <div className="flex gap-1">
@@ -768,15 +768,15 @@ const InputForm: React.FC<InputFormProps> = ({
                                           {t.description && (
                                             <div className="ml-9 text-xs text-slate-500 bg-slate-50 p-2 rounded border border-slate-100 flex gap-2">
                                                 <MessageSquareText className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                                                <span className="italic">{t.description}</span>
+                                                <span className="italic line-clamp-2">{t.description}</span>
                                             </div>
                                           )}
 
-                                          <div className="ml-9 text-[10px] text-slate-500 flex gap-3">
-                                              <span><b>TN:</b> {t.matrix.multipleChoice.recognition + t.matrix.multipleChoice.comprehension + t.matrix.multipleChoice.application}</span>
-                                              <span><b>ĐS:</b> {t.matrix.trueFalse.recognition + t.matrix.trueFalse.comprehension + t.matrix.trueFalse.application}</span>
-                                              <span><b>TLN:</b> {t.matrix.shortAnswer.recognition + t.matrix.shortAnswer.comprehension + t.matrix.shortAnswer.application}</span>
-                                              <span><b>TL:</b> {t.matrix.essay.recognition + t.matrix.essay.comprehension + t.matrix.essay.application}</span>
+                                          <div className="ml-9 text-[10px] text-slate-500 flex flex-wrap gap-2">
+                                              <span className="bg-slate-100 px-1.5 py-0.5 rounded"><b>TN:</b> {t.matrix.multipleChoice.recognition + t.matrix.multipleChoice.comprehension + t.matrix.multipleChoice.application}</span>
+                                              <span className="bg-slate-100 px-1.5 py-0.5 rounded"><b>ĐS:</b> {t.matrix.trueFalse.recognition + t.matrix.trueFalse.comprehension + t.matrix.trueFalse.application}</span>
+                                              <span className="bg-slate-100 px-1.5 py-0.5 rounded"><b>TLN:</b> {t.matrix.shortAnswer.recognition + t.matrix.shortAnswer.comprehension + t.matrix.shortAnswer.application}</span>
+                                              <span className="bg-slate-100 px-1.5 py-0.5 rounded"><b>TL:</b> {t.matrix.essay.recognition + t.matrix.essay.comprehension + t.matrix.essay.application}</span>
                                           </div>
                                       </div>
                                   ))
@@ -789,8 +789,8 @@ const InputForm: React.FC<InputFormProps> = ({
       </div>
 
       {/* 3. GENERATE BUTTON */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 shadow-lg z-30 flex justify-center">
-         <div className="w-full max-w-5xl px-4 sm:px-6 lg:px-8">
+      <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-slate-200 p-4 shadow-lg z-30 flex justify-center">
+         <div className="w-full max-w-7xl px-4 sm:px-6 lg:px-8">
             <button 
                 onClick={onGenerate} 
                 disabled={isLoading} 
