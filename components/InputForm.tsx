@@ -3,8 +3,10 @@ import React, { useState, useRef, useMemo, useEffect } from "react";
 import { TestParams, Topic, TestSetConfig, LevelCounts } from "../types";
 import { GRADES, DURATIONS } from "../constants";
 import { CURRICULUM_DATA, CurriculumStandard } from "../data/curriculumData";
+import { extractTextFromFile } from "../utils/fileParser";
+import { parseMatrixFromText } from "../services/geminiService";
 import { 
-  Key, Eye, EyeOff, Files, Settings2, Trash2, Upload, FileText, Grid3X3, FileInput, Shuffle, CopyX, Plus, ListChecks, Calculator, MessageSquareText, Lightbulb, BookOpen, ChevronRight, X, FolderTree, PenLine, List
+  Key, Eye, EyeOff, Files, Settings2, Trash2, Upload, FileText, Grid3X3, FileInput, Shuffle, CopyX, Plus, ListChecks, Calculator, MessageSquareText, Lightbulb, BookOpen, ChevronRight, X, FolderTree, PenLine, List, Loader2, Wand2, CheckCircle
 } from "lucide-react";
 
 interface InputFormProps {
@@ -26,6 +28,8 @@ const InputForm: React.FC<InputFormProps> = ({
   const [showApiKey, setShowApiKey] = useState(false);
   const [matrixTab, setMatrixTab] = useState<"manual" | "file">("manual");
   const [inputMode, setInputMode] = useState<"select" | "text">("select"); // Toggle between Dropdown and Manual Text
+  const [isAnalyzingFile, setIsAnalyzingFile] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null); // New state for selected file
   
   // Suggestions State
   const [selectedStandard, setSelectedStandard] = useState<CurriculumStandard | null>(null);
@@ -48,13 +52,39 @@ const InputForm: React.FC<InputFormProps> = ({
     gradeData.filter(item => item.parentTopic === newParentTopic),
   [gradeData, newParentTopic]);
 
+  // --- HELPERS FOR CODE GENERATION ---
+  const getGradePrefix = (gradeStr: string) => {
+    const match = gradeStr.match(/\d+/);
+    return match ? parseInt(match[0]) : 9;
+  };
+
+  const generateCodesForSet = (gradePrefix: number, setIndex: number) => {
+    // Logic: Set 1 (idx 0) -> x01, x02
+    //        Set 2 (idx 1) -> x03, x04
+    //        Set 3 (idx 2) -> x05, x06
+    const start = gradePrefix * 100 + (setIndex * 2) + 1;
+    const end = start + 1;
+    return `${start}, ${end}`;
+  };
+
   // --- EFFECTS ---
   
-  // Reset fields when Grade changes
+  // Reset fields AND Update Test Codes when Grade changes
   useEffect(() => {
+    // 1. Reset input fields
     setNewParentTopic("");
     setNewTopicName("");
     setSelectedStandard(null);
+
+    // 2. Update existing test sets with new codes based on grade
+    setParams(prev => {
+        const prefix = getGradePrefix(prev.grade);
+        const updatedSets = prev.testSets.map((set, index) => ({
+            ...set,
+            specificCodes: generateCodesForSet(prefix, index)
+        }));
+        return { ...prev, testSets: updatedSets };
+    });
   }, [params.grade]);
 
   // When Manual Input Name changes, try to fuzzy match for suggestions
@@ -147,18 +177,20 @@ const InputForm: React.FC<InputFormProps> = ({
 
   // --- SET LOGIC ---
   const handleSetCountChange = (count: number) => {
-    const validCount = Math.max(1, Math.min(5, count));
+    const validCount = Math.max(1, Math.min(10, count));
     setParams(prev => {
         const currentSets = prev.testSets;
+        const prefix = getGradePrefix(prev.grade);
+
         if (validCount > currentSets.length) {
             const newSets = [...currentSets];
             for (let i = currentSets.length; i < validCount; i++) {
                 newSets.push({
-                    id: i + 1,
+                    id: Date.now() + i,
                     fileName: `Bo_De_So_${i + 1}`,
-                    specificCodes: `${(i + 1) * 100 + 1}, ${(i + 1) * 100 + 2}`,
+                    specificCodes: generateCodesForSet(prefix, i),
                     quantity: 2,
-                    enableShuffle: false
+                    enableShuffle: true // Default to true here as well
                 });
             }
             return { ...prev, testSets: newSets };
@@ -231,6 +263,65 @@ const InputForm: React.FC<InputFormProps> = ({
     // Attempt to match standard for editing
     const standard = gradeData.find(t => t.topic === topic.name);
     setSelectedStandard(standard || null);
+    
+    // Ensure we are in manual tab to edit
+    setMatrixTab("manual");
+  };
+
+  // --- FILE HANDLING ---
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
+
+  const handleAnalyzeFile = async () => {
+      if (!selectedFile) return;
+      if (!apiKey) {
+          alert("Vui lòng nhập API Key để sử dụng tính năng phân tích file.");
+          return;
+      }
+
+      setIsAnalyzingFile(true);
+      try {
+          // 1. Extract text
+          const text = await extractTextFromFile(selectedFile);
+          
+          // 2. Parse using Gemini
+          const { topics: parsedTopics, detectedGrade } = await parseMatrixFromText(text, apiKey);
+          
+          if (parsedTopics && Array.isArray(parsedTopics) && parsedTopics.length > 0) {
+              setParams(prev => {
+                  const newState = {
+                      ...prev,
+                      topics: parsedTopics,
+                      matrixFileContent: undefined
+                  };
+                  // Auto-update grade if detected and valid
+                  if (detectedGrade && GRADES.includes(detectedGrade)) {
+                      newState.grade = detectedGrade;
+                  }
+                  return newState;
+              });
+              
+              setMatrixTab("manual"); 
+              setSelectedFile(null);
+              
+              let msg = `Đã trích xuất thành công ${parsedTopics.length} chủ đề!`;
+              if (detectedGrade && GRADES.includes(detectedGrade)) {
+                  msg += `\nĐã tự động chọn Khối lớp: ${detectedGrade}`;
+              }
+              alert(msg);
+          } else {
+              alert("Không tìm thấy dữ liệu ma trận hợp lệ trong file.");
+          }
+      } catch (err: any) {
+          console.error(err);
+          alert(`Lỗi phân tích file: ${err.message}`);
+      } finally {
+          setIsAnalyzingFile(false);
+          if (fileInputRef.current) fileInputRef.current.value = "";
+      }
   };
 
   const renderMatrixRow = (label: string, rowIdx: number, pointKey: keyof typeof params.pointValues) => (
@@ -319,7 +410,7 @@ const InputForm: React.FC<InputFormProps> = ({
                           <div className="mt-1 space-y-2">
                               <div className="flex gap-2">
                                   <div className="flex-1">
-                                      <label className="block text-[10px] text-slate-400 mb-0.5">Mã đề (VD: 601, 602)</label>
+                                      <label className="block text-[10px] text-slate-400 mb-0.5">Mã đề (VD: {generateCodesForSet(getGradePrefix(params.grade), idx)})</label>
                                       <input 
                                           type="text" 
                                           value={set.specificCodes} 
@@ -375,35 +466,63 @@ const InputForm: React.FC<InputFormProps> = ({
                   onClick={() => setMatrixTab("file")} 
                   className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 ${matrixTab === "file" ? "text-green-600 border-b-2 border-green-600 bg-green-50" : "text-slate-500 hover:bg-slate-50"}`}
               >
-                  <FileInput className="w-4 h-4" /> Nhập từ File (Docx/PDF)
+                  <Wand2 className="w-4 h-4" /> Nhập từ File AI
               </button>
           </div>
 
           <div className="p-6">
               {matrixTab === "file" ? (
                   <div className="flex flex-col items-center justify-center text-center space-y-4 py-8">
-                      {params.matrixFileContent ? (
-                          <div className="p-6 bg-green-50 rounded-xl border border-green-200 max-w-md w-full">
-                              <FileText className="w-12 h-12 text-green-600 mx-auto mb-2" />
-                              <div className="font-bold text-green-800">Đã tải file thành công</div>
-                              <button onClick={() => setParams(p => ({...p, matrixFileContent: undefined}))} className="mt-4 text-xs text-red-500 hover:underline">Xóa file</button>
+                      {isAnalyzingFile ? (
+                          <div className="flex flex-col items-center text-green-600 animate-pulse">
+                              <Loader2 className="w-10 h-10 animate-spin mb-2" />
+                              <span className="font-bold">Đang đọc & phân tích file...</span>
+                              <span className="text-xs text-slate-400">Vui lòng chờ AI trích xuất dữ liệu</span>
                           </div>
-                      ) : (
-                          <div className="w-full max-w-md">
+                      ) : !selectedFile ? (
+                          <div className="w-full max-w-md animate-in fade-in zoom-in-95">
                               <input 
                                   type="file" accept=".docx,.pdf" 
                                   ref={fileInputRef} 
-                                  onChange={async (e) => {
-                                      if(e.target.files?.[0]) {
-                                          setParams(p => ({...p, matrixFileContent: "File uploaded successfully."}));
-                                      }
-                                  }} 
+                                  onChange={handleFileSelect}
                                   className="hidden" id="file-upload" 
                               />
-                              <label htmlFor="file-upload" className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 hover:bg-slate-100 cursor-pointer transition-colors">
-                                  <Upload className="w-10 h-10 text-slate-400 mb-2" />
-                                  <span className="text-sm font-medium text-slate-600">Tải lên file Word (.docx) hoặc PDF</span>
+                              <label htmlFor="file-upload" className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 hover:bg-slate-100 cursor-pointer transition-colors group">
+                                  <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-2 group-hover:scale-110 transition-transform">
+                                      <Upload className="w-6 h-6 text-green-600" />
+                                  </div>
+                                  <span className="text-sm font-bold text-slate-700">Tải lên Ma trận (.docx / .pdf)</span>
+                                  <span className="text-xs text-slate-500 mt-1">AI sẽ tự động đọc và điền vào danh sách</span>
                               </label>
+                              <div className="text-xs text-slate-400 mt-4">
+                                  <p>Mẹo: Upload file chứa bảng ma trận. AI sẽ cố gắng nhận diện cột Chủ đề, và số lượng câu hỏi (TN, Đ/S, TLN, TL) để điền vào form bên cạnh.</p>
+                              </div>
+                          </div>
+                      ) : (
+                          <div className="w-full max-w-md bg-white border-2 border-green-100 rounded-xl p-6 shadow-sm text-center animate-in fade-in zoom-in-95">
+                              <div className="w-16 h-16 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                  <CheckCircle className="w-8 h-8" />
+                              </div>
+                              <h3 className="text-lg font-bold text-slate-800 mb-1">Tải file thành công!</h3>
+                              <p className="text-sm text-slate-500 mb-6 flex items-center justify-center gap-2 bg-slate-50 py-2 rounded border border-slate-100">
+                                  <FileText className="w-4 h-4" />
+                                  <span className="truncate max-w-[200px]">{selectedFile.name}</span>
+                              </p>
+                              
+                              <div className="flex gap-3">
+                                  <button 
+                                      onClick={() => {setSelectedFile(null); if(fileInputRef.current) fileInputRef.current.value='';}}
+                                      className="flex-1 py-2.5 bg-slate-100 text-slate-600 font-bold rounded-lg hover:bg-slate-200 transition-colors"
+                                  >
+                                      Hủy bỏ
+                                  </button>
+                                  <button 
+                                      onClick={handleAnalyzeFile}
+                                      className="flex-[2] py-2.5 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                                  >
+                                      <Wand2 className="w-4 h-4" /> Phân tích ngay
+                                  </button>
+                              </div>
                           </div>
                       )}
                   </div>

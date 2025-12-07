@@ -12,85 +12,69 @@ CẤU TRÚC ĐỀ THI:
 3. Phần III: Trắc nghiệm Trả lời ngắn.
 4. Phần IV: Tự luận.
 
+QUY ĐỊNH VỀ ĐỊNH DẠNG TOÁN HỌC (LATEX - BẮT BUỘC):
+- Tất cả các công thức toán học, biểu thức, biến số (x, y...), ký hiệu hình học (tam giác ABC...), độ dài, số đo độ... PHẢI được đặt trong cặp dấu USD ($).
+- Ví dụ đúng: "Cho tam giác $ABC$ vuông tại $A$. Tính $x$ biết $x^2 - 4 = 0$."
+- Không dùng dấu $ cho văn bản tiếng Việt thông thường.
+
 QUY ĐỊNH ĐỊNH DẠNG HIỂN THỊ (NGHIÊM NGẶT):
-1. TIÊU ĐỀ CÂU HỎI TRONG ĐỀ THI:
-   - Phải hiển thị ĐIỂM SỐ của câu đó, KHÔNG hiển thị mức độ (NB, TH, VD).
-   - Định dạng: **Câu [N] ([Điểm] điểm):** [Nội dung câu hỏi]
-   - Ví dụ: "Câu 1 (0,25 điểm): Tập hợp A gồm..." 
-   - KHÔNG ĐƯỢC VIẾT: "Câu 1 (NB):" hay "Câu 1 (Nhận biết):".
+1. TIÊU ĐỀ CÂU HỎI:
+   - Phải hiển thị ĐIỂM SỐ, KHÔNG hiển thị mức độ (NB, TH, VD).
+   - Định dạng: **Câu [N] ([Điểm] điểm):** [Nội dung]
 
-2. BẢNG ĐÁP ÁN (Đặc biệt là phần Tự Luận):
-   - TUYỆT ĐỐI KHÔNG sử dụng thẻ <br> hay <br/> trong Markdown Table.
-   - Nếu nội dung dài hoặc có nhiều bước, hãy dùng dấu chấm phẩy (;) hoặc số thứ tự (1. 2.) trên cùng một dòng.
-   - Ví dụ: "Bước 1: Tính Delta; Bước 2: Tìm nghiệm".
+2. ĐÁP ÁN VÀ HƯỚNG DẪN CHẤM (QUAN TRỌNG - ĐÚNG MẪU BẢNG TỔNG HỢP):
+   Phải tạo bảng so sánh đáp án của tất cả các mã đề trong bộ (Ví dụ: 901 và 902 nằm cạnh nhau).
 
-QUY TRÌNH TẠO ĐỀ (QUAN TRỌNG):
-Khi người dùng yêu cầu tạo một Bộ đề gồm nhiều mã (Ví dụ: 801, 802):
-1. Bạn phải viết ĐẦY ĐỦ nội dung đề thi cho mã 801.
-2. Sau đó, viết ĐẦY ĐỦ nội dung đề thi cho mã 802 (với các câu hỏi trắc nghiệm đã được xáo trộn thứ tự/đáp án so với 801, nhưng Tự luận giữ nguyên).
-3. Cuối cùng mới viết Bảng Đáp Án tổng hợp.
-KHÔNG ĐƯỢC viết tắt kiểu "Mã 802 tương tự mã 801". Phải viết rõ ra để người dùng in ấn.
+   A. PHẦN TRẮC NGHIỆM (I, II, III):
+   * Mẫu Bảng I (Nhiều lựa chọn):
+   | Câu | Mã Đề [Code1] | Mã Đề [Code2] | ... | Điểm |
+   |---|---|---|---|---|
+   | 1 | A | C | ... | 0,25 |
+   | 2 | B | A | ... | 0,25 |
 
-YÊU CẦU VỀ ĐỊNH DẠNG ĐÁP ÁN (BẮT BUỘC):
-Với mỗi bộ đề, bạn phải tạo ra Bảng Đáp Án tổng hợp so sánh TẤT CẢ các mã đề (variants) được yêu cầu trong bộ đó.
+   * Mẫu Bảng II (Đúng/Sai):
+   Ghi đáp án dạng: a-Đ, b-S, c-Đ, d-S.
+   | Câu | Mã Đề [Code1] | Mã Đề [Code2] | ... | Điểm |
+   |---|---|---|---|---|
+   | 13 | a-S, b-Đ, c-Đ, d-S | a-Đ, b-S, c-S, d-Đ | ... | 1,0 |
 
-Định dạng bảng Markdown CHÍNH XÁC như sau (Ví dụ 2 mã đề 801, 802):
+   * Mẫu Bảng III (Trả lời ngắn):
+   | Câu | Mã Đề [Code1] | Mã Đề [Code2] | ... | Điểm |
+   |---|---|---|---|---|
+   | 15 | x = 2 | x = -2 | ... | 0,5 |
 
-### I. Trắc nghiệm:
-| Câu | Mã Đề 801 | Mã Đề 802 | Điểm |
-|---|---|---|---|
-| 1 | B | C | 0,25 |
-| 2 | A | A | 0,25 |
+   B. PHẦN TỰ LUẬN (IV) - BẮT BUỘC KẺ BẢNG CHI TIẾT:
+   | Câu | Nội dung / Các bước giải | Điểm |
+   |---|---|---|
+   | 19 | a) Viết phương trình... <br> Tính $\\Delta = ...$ (0,25 điểm) <br> => $x_1=..., x_2=...$ | 1,0 |
+   | | b) ... | |
 
-### II. Trắc nghiệm đúng sai:
-| Câu | Mã Đề 801 | Mã Đề 802 | Điểm |
-|---|---|---|---|
-| 13 | a–Đ, b–S, c–Đ, d-S | a–S, b–Đ, c–Đ, d-S | 1,0 |
+   Lưu ý phần Tự luận: Cột "Nội dung" cần trình bày lời giải vắn tắt kèm theo mức điểm thành phần trong ngoặc đơn (ví dụ: (0,25 điểm)) ngay tại bước đó.
 
-### III. Trả lời ngắn:
-| Câu | Mã Đề 801 | Mã Đề 802 | Điểm |
-|---|---|---|---|
-| 15 | x^2-4 | 0 | 0,5 |
-| 16 | 3x(x-2y) | xy/4 | 0,5 |
+QUY TRÌNH TẠO ĐỀ (LOGIC TRỘN):
+1. Luôn soạn thảo Mã đề đầu tiên (Mã gốc) trước.
+2. Các mã đề sau trong cùng một bộ sẽ được tạo ra bằng cách hoán vị (trộn) từ Mã gốc.
+3. Tuyệt đối tuân thủ quy tắc giữ nguyên Tự luận nếu được yêu cầu.
 
-### IV. Tự luận:
-(Tự luận KHÔNG tráo đổi nội dung giữa các mã đề trong cùng 1 bộ. Chỉ cần liệt kê đáp án/hướng dẫn chấm chung).
-LƯU Ý: TUYỆT ĐỐI KHÔNG sử dụng thẻ <br>.
-| Câu | Nội dung | Điểm |
-|---|---|---|
-| 19 | a) ... ; b) ... | 0,5 |
+CẤU TRÚC OUTPUT MONG MUỐN:
+## BỘ ĐỀ SỐ [N] (Các mã: [Danh sách mã])
 
-YÊU CẦU VỀ TRỘN ĐỀ (SHUFFLING):
-- Nếu bật trộn: CHỈ trộn thứ tự câu và đáp án ở Phần I, II, III giữa các mã đề.
-- TUYỆT ĐỐI KHÔNG TRỘN PHẦN IV (TỰ LUN). Câu hỏi tự luận phải giữ nguyên vị trí và nội dung cho mọi mã đề của bộ đó.
-
-CẤU TRÚC OUTPUT ĐỂ TÁCH FILE:
-## BỘ ĐỀ SỐ [N] (Các mã: [Danh sách mã] - [Tên File])
-
-### ĐỀ KIỂM TRA MÃ [Mã 1]
-... (Nội dung đầy đủ của mã 1) ...
-
+### ĐỀ KIỂM TRA MÃ [Mã Gốc]
+...
 ---
-
-### ĐỀ KIỂM TRA MÃ [Mã 2] (Nếu có)
-... (Nội dung đầy đủ của mã 2 - Đã trộn trắc nghiệm) ...
-
+### ĐỀ KIỂM TRA MÃ [Mã Trộn 1]
+...
 ---
+### ĐÁP ÁN VÀ HƯỚNG DẪN CHẤM (BỘ [N] - MÃ: [Mã Gốc], [Mã Trộn]...)
 
-### Đáp án và Hướng dẫn chấm (Bộ [N] - Mã: [Danh sách mã])
-... (Các bảng đáp án so sánh đầy đủ các mã như mẫu trên) ...
-
-[Lặp lại cho các Bộ đề khác...]
+#### I. Trắc nghiệm:
+(Bảng tổng hợp)
+...
+#### IV. Tự luận:
+(Bảng hướng dẫn chấm)
 
 ## NGÂN HÀNG CÂU HỎI
-Lập bảng ngân hàng câu hỏi bằng cách **TRÍCH XUẤT NỘI DUNG TỪ MÃ ĐỀ ĐẦU TIÊN** của mỗi Bộ đề.
-(Ví dụ: Bộ 1 có mã 601, 602 -> Lấy toàn bộ câu hỏi và đáp án của mã 601 đưa vào đây. Nếu có Bộ 2 mã 603, 604 -> Lấy tiếp câu hỏi của mã 603 đưa vào đây).
-Bảng phải chứa đầy đủ câu hỏi của tất cả các phần (TN, Đ/S, TLN, TL).
-
-| Câu | Mức độ | Nội dung câu hỏi | Đáp án | Thang điểm |
-|---|---|---|---|---|
-| 1 | NB | [Nội dung lấy từ Mã đề đầu tiên] | [Đáp án] | ... |
-| 2 | TH | ... | ... | ... |
+(Bảng tổng hợp câu hỏi nguồn từ Mã Gốc)
 `;
 };
 
@@ -141,28 +125,50 @@ const generateUserPrompt = (params: TestParams) => {
   let setInstructions = `YÊU CẦU VỀ CÁC BỘ ĐỀ (TỔNG CỘNG ${testSets.length} BỘ):\n`;
   
   if (preventDuplicates && testSets.length > 1) {
-      setInstructions += `QUAN TRỌNG: Các câu hỏi giữa các Bộ đề khác nhau KHÔNG ĐƯỢC TRÙNG NHAU (Bộ 1 phải khác Bộ 2). Tạo nội dung riêng biệt.\n`;
+      setInstructions += `QUAN TRỌNG: Các câu hỏi giữa các Bộ đề khác nhau KHÔNG ĐƯỢC TRÙNG NHAU (Ví dụ: Câu 1 của Bộ 1 phải khác Câu 1 của Bộ 2). Hãy sáng tạo nội dung mới.\n`;
   }
+
+  const allFirstCodes: string[] = [];
 
   testSets.forEach((set, index) => {
     const variantStr = set.specificCodes || `${(index+1)*100+1}`;
+    const codeList = variantStr.split(',').map(s => s.trim()).filter(s => s);
+    const sourceCode = codeList[0]; // Mã đề đầu tiên dùng để trộn
+    const derivedCodes = codeList.slice(1); // Các mã sau
+
+    allFirstCodes.push(sourceCode);
 
     setInstructions += `
 ---------------------------------------------------
 BỘ ĐỀ SỐ ${index + 1}:
-- Các mã đề (Variants) cần tạo: ${variantStr}.
-- Chế độ trộn: ${set.enableShuffle ? "BẬT (Trộn thứ tự câu/đáp án Phần I, II, III giữa các mã)" : "TẮT"}.
-- LƯU Ý: Phần IV (Tự luận) KHÔNG TRỘN (Nội dung giống hệt nhau cho mọi mã).
-- OUTPUT YÊU CẦU (BẮT BUỘC):
-  1. VIẾT ĐẦY ĐỦ ĐỀ THI CHO TỪNG MÃ ĐỀ TRONG DANH SÁCH: ${variantStr}.
-     (Ví dụ: Nếu danh sách là "801, 802", bạn phải viết toàn bộ đề 801, sau đó viết toàn bộ đề 802).
-  2. Cuối cùng mới là Bảng Đáp Án so sánh cho TẤT CẢ các mã: ${variantStr}.
+1. MÃ ĐỀ GỐC: ${sourceCode}
+   - Hãy soạn thảo đề thi hoàn chỉnh cho mã này trước tiên dựa trên Ma trận.
+
+`;
+    
+    if (derivedCodes.length > 0) {
+        setInstructions += `2. CÁC MÃ ĐỀ TRỘN (BIẾN THỂ): ${derivedCodes.join(", ")}
+   - Nguyên tắc: Lấy toàn bộ câu hỏi từ Mã đề GỐC (${sourceCode}) để tạo ra các mã này (Hoán vị).
+`;
+        if (set.enableShuffle) {
+            setInstructions += `   - QUY TẮC TRỘN (QUAN TRỌNG):
+     + Phần I, II, III (Trắc nghiệm, Đ/S, TLN): HOÁN VỊ thứ tự câu hỏi và thứ tự các đáp án (A,B,C,D) để tạo sự khác biệt.
+     + Phần IV (Tự luận): GIỮ NGUYÊN 100% nội dung và thứ tự câu hỏi y hệt Mã đề GỐC (${sourceCode}). KHÔNG ĐƯỢC THAY ĐỔI HAY TRỘN TỰ LUẬN.
+`;
+        } else {
+             setInstructions += `   - Yêu cầu: Tạo các đề tương đương hoặc giữ nguyên theo ý đồ thông thường.`;
+        }
+    }
+
+    setInstructions += `
+3. BẢNG ĐÁP ÁN TỔNG HỢP:
+   - Lập bảng so sánh đáp án của [${sourceCode}, ${derivedCodes.join(", ")}] đặt cạnh nhau.
 ---------------------------------------------------
 `;
   });
 
   let contentInstruction = "";
-  if (matrixFileContent) {
+  if (matrixFileContent && !topics.length) {
     contentInstruction = `NỘI DUNG MA TRẬN / TÀI LIỆU CUNG CẤP:\n${matrixFileContent}`;
   } else {
     const { matrixStr, globalTotals } = formatTopicMatrix(topics);
@@ -181,6 +187,12 @@ QUY ĐỊNH CẤU TRÚC VÀ ĐIỂM SỐ:
 ${setInstructions}
 
 ${contentInstruction}
+
+YÊU CẦU VỀ NGÂN HÀNG CÂU HỎI (CUỐI CÙNG):
+Hãy lập một bảng "NGÂN HÀNG CÂU HỎI" tổng hợp.
+Bảng này PHẢI bao gồm toàn bộ nội dung câu hỏi của các MÃ ĐỀ GỐC sau: ${allFirstCodes.join(", ")}.
+(Chỉ lấy câu hỏi từ các mã gốc, không lấy từ mã trộn).
+Định dạng bảng: | Chủ đề | Câu | Mức độ | Nội dung câu hỏi (có LaTeX $) | Đáp án | Thang điểm |
 
 ${additionalRequest ? `YÊU CẦU THÊM: "${additionalRequest}"` : ""}
 `;
@@ -225,6 +237,65 @@ export const generateMathTest = async (params: TestParams, apiKey: string): Prom
     throw error instanceof Error ? error : new Error("Lỗi không xác định từ Gemini.");
   }
 };
+
+// --- NEW FUNCTION: PARSE MATRIX FROM TEXT ---
+export const parseMatrixFromText = async (text: string, apiKey: string): Promise<{topics: Topic[], detectedGrade: string | null}> => {
+    if (!apiKey) throw new Error("API Key required");
+    const ai = new GoogleGenAI({ apiKey: apiKey });
+    const modelId = "gemini-2.5-flash";
+
+    const prompt = `
+    Phân tích văn bản sau đây (được trích xuất từ file Ma trận đề thi).
+    
+    NHIỆM VỤ 1: Xác định xem ma trận này thuộc KHỐI LỚP nào (Lớp 6, Lớp 7, Lớp 8, hoặc Lớp 9) dựa trên các từ khóa kiến thức (ví dụ: "số tự nhiên"->Lớp 6, "số hữu tỉ"->Lớp 7, "hằng đẳng thức"->Lớp 8, "căn bậc hai"->Lớp 9).
+    NHIỆM VỤ 2: Trích xuất danh sách các chủ đề và số lượng câu hỏi.
+
+    Input text:
+    ${text.substring(0, 15000)} // Limit context if too long
+
+    Yêu cầu Output:
+    Trả về MỘT JSON duy nhất. KHÔNG thêm giải thích.
+    Cấu trúc JSON:
+    {
+      "detectedGrade": "Lớp 6" | "Lớp 7" | "Lớp 8" | "Lớp 9" | null,
+      "topics": [
+          {
+            "id": "random_string",
+            "name": "Tên chủ đề con / Nội dung kiến thức",
+            "parentName": "Tên chương / Chủ đề lớn (nếu có)",
+            "matrix": {
+              "multipleChoice": { "recognition": number, "comprehension": number, "application": number },
+              "trueFalse": { "recognition": number, "comprehension": number, "application": number },
+              "shortAnswer": { "recognition": number, "comprehension": number, "application": number },
+              "essay": { "recognition": number, "comprehension": number, "application": number }
+            }
+          }
+      ]
+    }
+    
+    Lưu ý mapping: "TN" -> multipleChoice; "TL" -> essay; "Đúng sai" -> trueFalse; "Trả lời ngắn" -> shortAnswer.
+    `;
+
+    try {
+        const result = await ai.models.generateContent({
+            model: modelId,
+            contents: prompt,
+            config: { responseMimeType: "application/json" }
+        });
+        
+        const jsonText = result.text;
+        const parsed = JSON.parse(jsonText);
+        
+        // Ensure structure compliance even if model hallucinates slightly
+        return {
+            topics: Array.isArray(parsed.topics) ? parsed.topics : [],
+            detectedGrade: parsed.detectedGrade || null
+        };
+    } catch (e) {
+        console.error("Parse Matrix Error", e);
+        throw new Error("Không thể phân tích ma trận từ file. Hãy thử copy nội dung vào file text đơn giản hơn.");
+    }
+}
 
 // --- NEW FUNCTION: ANALYZE IMAGE TO EXTRACT TIKZ STYLE ---
 export const analyzeTikZStyle = async (imageFile: File, apiKey: string): Promise<string> => {

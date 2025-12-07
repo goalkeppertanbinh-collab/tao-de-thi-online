@@ -1,12 +1,11 @@
 
 import { TestParams } from "../types";
 
-export const exportToWord = async (content: string, filename: string = "De_Kiem_Tra.docx", docTitle: string = "ĐỀ KIỂM TRA TOÁN (THCS)") => {
+// --- CORE BLOB GENERATORS ---
+
+export const generateWordBlob = async (content: string, docTitle: string = "ĐỀ KIỂM TRA TOÁN (THCS)"): Promise<Blob> => {
   const docx = await import("docx");
   const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Table, TableRow, TableCell, WidthType, BorderStyle } = docx;
-  
-  const fileSaverModule = await import("file-saver");
-  const saveAs = fileSaverModule.saveAs || (fileSaverModule as any).default;
 
   const parseTextWithBold = (text: string) => {
     const parts = text.split(/(\*\*.*?\*\*)/);
@@ -16,13 +15,13 @@ export const exportToWord = async (content: string, filename: string = "De_Kiem_
           text: part.slice(2, -2),
           bold: true,
           font: "Times New Roman",
-          size: 24,
+          size: 24, // 12pt
         });
       }
       return new TextRun({
         text: part,
         font: "Times New Roman",
-        size: 24,
+        size: 24, // 12pt
       });
     });
   };
@@ -149,55 +148,12 @@ export const exportToWord = async (content: string, filename: string = "De_Kiem_
     }],
   });
 
-  const blob = await Packer.toBlob(doc);
-  saveAs(blob, filename);
+  return await Packer.toBlob(doc);
 };
 
-// --- HELPER FOR COMPLEX TABLES ---
-const createHeaderCell = (docx: any, text: string, rowSpan: number = 1, colSpan: number = 1, widthPercent: number = 0) => {
-  const { TableCell, Paragraph, TextRun, AlignmentType, VerticalAlign, WidthType, BorderStyle } = docx;
-  return new TableCell({
-    children: [new Paragraph({ 
-        children: [new TextRun({ text, bold: true, font: "Times New Roman", size: 22 })], 
-        alignment: AlignmentType.CENTER 
-    })],
-    verticalAlign: VerticalAlign.CENTER,
-    rowSpan: rowSpan,
-    columnSpan: colSpan,
-    width: widthPercent > 0 ? { size: widthPercent, type: WidthType.PERCENTAGE } : undefined,
-    borders: {
-        top: { style: BorderStyle.SINGLE, size: 1 },
-        bottom: { style: BorderStyle.SINGLE, size: 1 },
-        left: { style: BorderStyle.SINGLE, size: 1 },
-        right: { style: BorderStyle.SINGLE, size: 1 },
-    }
-  });
-};
-
-const createDataCell = (docx: any, text: string | number, align: any = null, bold: boolean = false, colSpan: number = 1) => {
-    const { TableCell, Paragraph, TextRun, AlignmentType, VerticalAlign, BorderStyle } = docx;
-    return new TableCell({
-      children: [new Paragraph({ 
-          children: [new TextRun({ text: String(text), bold: bold, font: "Times New Roman", size: 22 })], 
-          alignment: align || AlignmentType.CENTER 
-      })],
-      verticalAlign: VerticalAlign.CENTER,
-      columnSpan: colSpan,
-      borders: {
-          top: { style: BorderStyle.SINGLE, size: 1 },
-          bottom: { style: BorderStyle.SINGLE, size: 1 },
-          left: { style: BorderStyle.SINGLE, size: 1 },
-          right: { style: BorderStyle.SINGLE, size: 1 },
-      }
-    });
-};
-
-// --- MATRIX EXPORT (LANDSCAPE) ---
-export const exportMatrixDocx = async (params: TestParams) => {
+export const generateMatrixBlob = async (params: TestParams): Promise<Blob> => {
     const docx = await import("docx");
     const { Document, Packer, Table, TableRow, AlignmentType, HeadingLevel, Paragraph, WidthType, PageOrientation } = docx;
-    const fileSaverModule = await import("file-saver");
-    const saveAs = fileSaverModule.saveAs || (fileSaverModule as any).default;
 
     // Row 1: Headers
     const hRow1 = new TableRow({
@@ -274,8 +230,8 @@ export const exportMatrixDocx = async (params: TestParams) => {
         rows.push(new TableRow({
             children: [
                 createDataCell(docx, idx + 1),
-                createDataCell(docx, t.parentName || t.name, AlignmentType.LEFT), // Use Parent Name (Major Topic)
-                createDataCell(docx, t.name, AlignmentType.LEFT), // Use Name (Content)
+                createDataCell(docx, t.parentName || t.name, AlignmentType.LEFT), 
+                createDataCell(docx, t.name, AlignmentType.LEFT), 
                 createDataCell(docx, m.multipleChoice.recognition || ""),
                 createDataCell(docx, m.multipleChoice.comprehension || ""),
                 createDataCell(docx, m.multipleChoice.application || ""),
@@ -361,16 +317,12 @@ export const exportMatrixDocx = async (params: TestParams) => {
             ]
         }]
     });
-    const blob = await Packer.toBlob(doc);
-    saveAs(blob, `${params.testSets[0]?.fileName || 'De_Thi'}_Ma_Tran.docx`);
-};
+    return await Packer.toBlob(doc);
+}
 
-// --- SPECIFICATION EXPORT (LANDSCAPE, DETAILED) ---
-export const exportSpecDocx = async (params: TestParams) => {
+export const generateSpecBlob = async (params: TestParams): Promise<Blob> => {
     const docx = await import("docx");
     const { Document, Packer, Table, TableRow, TableCell, AlignmentType, HeadingLevel, Paragraph, WidthType, PageOrientation, TextRun, BorderStyle, VerticalAlign } = docx;
-    const fileSaverModule = await import("file-saver");
-    const saveAs = fileSaverModule.saveAs || (fileSaverModule as any).default;
 
     // Helper to create the detailed cell (e.g., "C1\nNLMH")
     const createSpecCell = (count: number, startIdx: number, competency: string = "NLMH") => {
@@ -470,25 +422,22 @@ export const exportSpecDocx = async (params: TestParams) => {
     });
 
     // --- SUMMARY ROWS (Total Questions, Score, Percentage) ---
-    // Calculate Scores based on points
     const scoreMC = totalMC * params.pointValues.multipleChoice;
     const scoreTF = totalTF * params.pointValues.trueFalse; 
     const scoreSA = totalSA * params.pointValues.shortAnswer;
     const scoreEssay = totalEssay * params.pointValues.essay;
     const finalScore = scoreMC + scoreTF + scoreSA + scoreEssay;
 
-    // 1. Total Questions
     rows.push(new TableRow({
         children: [
             createHeaderCell(docx, "Tổng số câu", 1, 4),
-            createDataCell(docx, totalMC, null, true, 3), // Merged MC cols
-            createDataCell(docx, totalTF, null, true, 3), // Merged TF cols
-            createDataCell(docx, totalSA, null, true, 3), // Merged SA cols
-            createDataCell(docx, totalEssay, null, true, 3), // Merged Essay cols
+            createDataCell(docx, totalMC, null, true, 3), 
+            createDataCell(docx, totalTF, null, true, 3), 
+            createDataCell(docx, totalSA, null, true, 3), 
+            createDataCell(docx, totalEssay, null, true, 3), 
         ]
     }));
 
-    // 2. Total Score
     rows.push(new TableRow({
         children: [
             createHeaderCell(docx, "Tổng số điểm", 1, 4),
@@ -499,7 +448,6 @@ export const exportSpecDocx = async (params: TestParams) => {
         ]
     }));
 
-    // 3. Percentage
     const fmtPct = (val: number, total: number) => total > 0 ? ((val/total)*100).toFixed(0) : "0";
     rows.push(new TableRow({
         children: [
@@ -521,29 +469,19 @@ export const exportSpecDocx = async (params: TestParams) => {
         }]
     });
 
-    const blob = await Packer.toBlob(doc);
-    saveAs(blob, `${params.testSets[0]?.fileName || 'De_Thi'}_Dac_Ta.docx`);
-};
+    return await Packer.toBlob(doc);
+}
 
-// --- QUESTION BANK EXPORT (LANDSCAPE, MERGED TOPICS, COMBINED LEVEL) ---
-export const exportBankDocx = async (result: string, params: TestParams) => {
+export const generateBankBlob = async (result: string, params: TestParams): Promise<Blob> => {
     const docx = await import("docx");
-    const { Document, Packer, Table, TableRow, TableCell, AlignmentType, HeadingLevel, Paragraph, WidthType, PageOrientation, TextRun, BorderStyle, VerticalAlign } = docx;
-    const fileSaverModule = await import("file-saver");
-    const saveAs = fileSaverModule.saveAs || (fileSaverModule as any).default;
+    const { Document, Packer, Table, TableRow, AlignmentType, HeadingLevel, Paragraph, WidthType, PageOrientation } = docx;
 
-    // 1. IMPROVED PARSING STRATEGY
-    // Look for the "NGÂN HÀNG CÂU HỎI" section using a more robust regex
     const headerRegex = /(?:^|\n)#{1,3}\s*NGÂN\s+HÀNG\s+CÂU\s+HỎI/i;
     const parts = result.split(headerRegex);
-    
-    // Take the last part if found, assuming the bank is at the end
     let bankSection = parts.length > 1 ? parts[parts.length - 1] : null;
 
-    // Fallback: If explicit header missing, look for the table structure (Header row)
     if (!bankSection) {
-        // Look for typical headers in the bank table (Mức độ, Nội dung, Đáp án)
-        const tableHeaderRegex = /\|\s*Câu\s*\|\s*Mức độ\s*\|\s*Nội dung/i;
+        const tableHeaderRegex = /\|\s*Chủ đề\s*\|\s*Câu/i;
         const match = result.match(tableHeaderRegex);
         if (match && match.index !== undefined) {
              bankSection = result.substring(match.index);
@@ -551,21 +489,18 @@ export const exportBankDocx = async (result: string, params: TestParams) => {
     }
 
     if (!bankSection) { 
-        alert("Không tìm thấy dữ liệu ngân hàng câu hỏi. Hãy kiểm tra kết quả hiển thị xem có phần 'NGÂN HÀNG CÂU HỎI' không."); 
-        return; 
+        throw new Error("Không tìm thấy dữ liệu ngân hàng câu hỏi.");
     }
 
     const lines = bankSection.split("\n").filter(line => line.trim().startsWith("|") && !line.includes("---"));
-    const dataRows = lines.slice(1); // Skip header row
+    const dataRows = lines.slice(1); 
     
-    // Parse raw data: [QuestionNo, Level, Content, Answer, Score]
     const parsedQuestions = dataRows.map(line => 
         line.split("|").filter((c, i, arr) => i !== 0 && i !== arr.length - 1).map(c => c.trim())
     );
 
     const rows: any[] = [];
     
-    // Header
     rows.push(new TableRow({
         children: [
             createHeaderCell(docx, "Chủ đề", 1, 1, 15),
@@ -576,84 +511,110 @@ export const exportBankDocx = async (result: string, params: TestParams) => {
         ]
     }));
 
-    let currentQIdx = 0;
+    parsedQuestions.forEach(q => {
+        const topic = q[0] || "";
+        const qNum = q[1] || "";
+        const level = q[2] || "";
+        const content = q[3] || "";
+        const answer = q[4] || "";
+        const score = q[5] || "";
 
-    // 2. Iterate Topics and assign questions
-    params.topics.forEach(t => {
-        const sumType = (l: any) => l.recognition + l.comprehension + l.application;
-        const totalQ = sumType(t.matrix.multipleChoice) + sumType(t.matrix.trueFalse) + sumType(t.matrix.shortAnswer) + sumType(t.matrix.essay);
+        const combinedLevel = `${qNum} ${level}`.trim();
 
-        if (totalQ === 0) return;
-
-        // Get the slice of questions for this topic
-        const topicQuestions = parsedQuestions.slice(currentQIdx, currentQIdx + totalQ);
-        currentQIdx += totalQ;
-
-        topicQuestions.forEach((q, idx) => {
-            const cells = [];
-            
-            // Col 1: Topic (Merged for first row of topic, using Parent Name if available)
-            if (idx === 0) {
-                cells.push(new TableCell({
-                    children: [new Paragraph({ children: [new TextRun({ text: t.parentName || t.name, bold: true, font: "Times New Roman", size: 22 })], alignment: AlignmentType.CENTER })],
-                    verticalAlign: VerticalAlign.CENTER,
-                    rowSpan: topicQuestions.length,
-                    width: { size: 15, type: WidthType.PERCENTAGE },
-                    borders: { top: { style: BorderStyle.SINGLE, size: 1 }, bottom: { style: BorderStyle.SINGLE, size: 1 }, left: { style: BorderStyle.SINGLE, size: 1 }, right: { style: BorderStyle.SINGLE, size: 1 } }
-                }));
-            }
-
-            // Col 2: Combined "1NB"
-            const qNum = q[0] || "";
-            const qLevel = q[1] || "";
-            const combined = `${qNum}${qLevel}`;
-            cells.push(createDataCell(docx, combined));
-
-            // Col 3: Content (Left align)
-            cells.push(createDataCell(docx, q[2] || "", AlignmentType.LEFT));
-
-            // Col 4: Answer
-            cells.push(createDataCell(docx, q[3] || ""));
-
-            // Col 5: Score
-            cells.push(createDataCell(docx, q[4] || ""));
-
-            rows.push(new TableRow({ children: cells }));
-        });
+        rows.push(new TableRow({
+            children: [
+                createDataCell(docx, topic, AlignmentType.LEFT),
+                createDataCell(docx, combinedLevel),
+                createDataCell(docx, content, AlignmentType.LEFT),
+                createDataCell(docx, answer),
+                createDataCell(docx, score),
+            ]
+        }));
     });
-
-    // Handle leftover questions
-    if (currentQIdx < parsedQuestions.length) {
-        const leftovers = parsedQuestions.slice(currentQIdx);
-        leftovers.forEach((q, idx) => {
-             const cells = [];
-             if (idx === 0) {
-                 cells.push(createDataCell(docx, "Khác", null, true, 1)); 
-             } else {
-                 cells.push(createDataCell(docx, "")); 
-             }
-             rows.push(new TableRow({
-                 children: [
-                     createDataCell(docx, "Khác"),
-                     createDataCell(docx, `${q[0]}${q[1]}`),
-                     createDataCell(docx, q[2] || "", AlignmentType.LEFT),
-                     createDataCell(docx, q[3] || ""),
-                     createDataCell(docx, q[4] || ""),
-                 ]
-             }));
-        });
-    }
 
     const doc = new Document({
         sections: [{
             properties: { page: { size: { orientation: PageOrientation.LANDSCAPE }, margin: { top: 720, right: 720, bottom: 720, left: 720 } } },
             children: [
-                new Paragraph({ text: "NGÂN HÀNG CÂU HỎI", heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER, spacing: { after: 300 } }),
+                new Paragraph({ text: "NGÂN HÀNG CÂU HỎI TỔNG HỢP", heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER, spacing: { after: 300 } }),
                 new Table({ rows: rows, width: { size: 100, type: WidthType.PERCENTAGE } })
             ]
         }]
     });
 
-    const blob = await Packer.toBlob(doc);
-    saveAs(blob, `${params.testSets[0]?.fileName || 'Ngan_Hang'}_Cau_Hoi.docx`);
+    return await Packer.toBlob(doc);
+}
+
+
+// --- SAVE AS WRAPPERS (Maintaining Original Interface) ---
+
+export const exportToWord = async (content: string, filename: string = "De_Kiem_Tra.docx", docTitle: string = "ĐỀ KIỂM TRA TOÁN (THCS)") => {
+  const fileSaverModule = await import("file-saver");
+  const saveAs = fileSaverModule.saveAs || (fileSaverModule as any).default;
+  const blob = await generateWordBlob(content, docTitle);
+  saveAs(blob, filename);
+};
+
+export const exportMatrixDocx = async (params: TestParams) => {
+    const fileSaverModule = await import("file-saver");
+    const saveAs = fileSaverModule.saveAs || (fileSaverModule as any).default;
+    const blob = await generateMatrixBlob(params);
+    saveAs(blob, `${params.testSets[0]?.fileName || 'De_Thi'}_Ma_Tran.docx`);
+};
+
+export const exportSpecDocx = async (params: TestParams) => {
+    const fileSaverModule = await import("file-saver");
+    const saveAs = fileSaverModule.saveAs || (fileSaverModule as any).default;
+    const blob = await generateSpecBlob(params);
+    saveAs(blob, `${params.testSets[0]?.fileName || 'De_Thi'}_Dac_Ta.docx`);
+};
+
+export const exportBankDocx = async (result: string, params: TestParams) => {
+    const fileSaverModule = await import("file-saver");
+    const saveAs = fileSaverModule.saveAs || (fileSaverModule as any).default;
+    try {
+        const blob = await generateBankBlob(result, params);
+        saveAs(blob, `${params.testSets[0]?.fileName || 'Ngan_Hang'}_Cau_Hoi.docx`);
+    } catch (e: any) {
+        alert(e.message);
+    }
+};
+
+// --- HELPER FOR COMPLEX TABLES ---
+const createHeaderCell = (docx: any, text: string, rowSpan: number = 1, colSpan: number = 1, widthPercent: number = 0) => {
+  const { TableCell, Paragraph, TextRun, AlignmentType, VerticalAlign, WidthType, BorderStyle } = docx;
+  return new TableCell({
+    children: [new Paragraph({ 
+        children: [new TextRun({ text, bold: true, font: "Times New Roman", size: 22 })], 
+        alignment: AlignmentType.CENTER 
+    })],
+    verticalAlign: VerticalAlign.CENTER,
+    rowSpan: rowSpan,
+    columnSpan: colSpan,
+    width: widthPercent > 0 ? { size: widthPercent, type: WidthType.PERCENTAGE } : undefined,
+    borders: {
+        top: { style: BorderStyle.SINGLE, size: 1 },
+        bottom: { style: BorderStyle.SINGLE, size: 1 },
+        left: { style: BorderStyle.SINGLE, size: 1 },
+        right: { style: BorderStyle.SINGLE, size: 1 },
+    }
+  });
+};
+
+const createDataCell = (docx: any, text: string | number, align: any = null, bold: boolean = false, colSpan: number = 1) => {
+    const { TableCell, Paragraph, TextRun, AlignmentType, VerticalAlign, BorderStyle } = docx;
+    return new TableCell({
+      children: [new Paragraph({ 
+          children: [new TextRun({ text: String(text), bold: bold, font: "Times New Roman", size: 22 })], 
+          alignment: align || AlignmentType.CENTER 
+      })],
+      verticalAlign: VerticalAlign.CENTER,
+      columnSpan: colSpan,
+      borders: {
+          top: { style: BorderStyle.SINGLE, size: 1 },
+          bottom: { style: BorderStyle.SINGLE, size: 1 },
+          left: { style: BorderStyle.SINGLE, size: 1 },
+          right: { style: BorderStyle.SINGLE, size: 1 },
+      }
+    });
 };
