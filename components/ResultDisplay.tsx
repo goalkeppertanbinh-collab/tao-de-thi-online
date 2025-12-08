@@ -327,7 +327,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ result, error, params, is
     setIsExportingAll(true);
     try {
         const JSZipModule = await import("jszip");
-        const JSZip = JSZipModule.default || JSZipModule;
+        const JSZip = JSZipModule.default;
         const zip = new JSZip();
         const folderName = params.testSets[0]?.fileName || "Bo_De_Thi";
 

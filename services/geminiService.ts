@@ -1,6 +1,7 @@
 
 import { GoogleGenAI } from "@google/genai";
 import { TestParams, Topic, LevelCounts } from "../types";
+import { CURRICULUM_DATA } from "../data/curriculumData";
 
 const generateSystemInstruction = () => {
   return `Bạn là một chuyên gia giáo dục Toán học Việt Nam, chuyên soạn đề kiểm tra cho học sinh Trung học cơ sở (THCS) theo Chương trình Giáo dục Phổ thông 2018.
@@ -259,22 +260,62 @@ export const generateMathTest = async (params: TestParams, apiKey: string): Prom
   }
 };
 
-// --- NEW FUNCTION: PARSE MATRIX FROM TEXT ---
+// --- IMPROVED FUNCTION: PARSE MATRIX FROM TEXT WITH CURRICULUM DATA SUPPORT ---
 export const parseMatrixFromText = async (text: string, apiKey: string): Promise<{topics: Topic[], detectedGrade: string | null}> => {
     if (!apiKey) throw new Error("API Key required");
     const ai = new GoogleGenAI({ apiKey: apiKey });
     const modelId = "gemini-2.5-flash";
 
+    // 1. Detect Grade Locally First (Heuristic)
+    let detectedGrade: string | null = null;
+    if (text.match(/Lớp\s*6/i)) detectedGrade = "Lớp 6";
+    else if (text.match(/Lớp\s*7/i)) detectedGrade = "Lớp 7";
+    else if (text.match(/Lớp\s*8/i)) detectedGrade = "Lớp 8";
+    else if (text.match(/Lớp\s*9/i)) detectedGrade = "Lớp 9";
+
+    // 2. Prepare Relevant Curriculum Data for Context
+    let curriculumContext = "";
+    let validTopicsForGrade: any[] = [];
+    
+    if (detectedGrade) {
+        validTopicsForGrade = CURRICULUM_DATA.filter(item => item.grade === detectedGrade);
+        const topicList = validTopicsForGrade.map(t => `- ${t.topic} (Thuộc chương: ${t.parentTopic})`).join("\n");
+        curriculumContext = `
+DƯỚI ĐÂY LÀ DANH SÁCH CHỦ ĐỀ CHUẨN CỦA ${detectedGrade}.
+HÃY ƯU TIÊN SỬ DỤNG TÊN CHỦ ĐỀ TRONG DANH SÁCH NÀY ĐỂ KHỚP VỚI NỘI DUNG TRONG FILE:
+${topicList}
+        `;
+    }
+
     const prompt = `
     Phân tích văn bản sau đây (được trích xuất từ file Ma trận đề thi).
-    Input text:
-    ${text.substring(0, 15000)} // Limit context if too long
+    Mục tiêu: Trích xuất danh sách chủ đề và số lượng câu hỏi ở từng mức độ (Nhận biết, Thông hiểu, Vận dụng).
+
+    ${curriculumContext}
+
+    Input text (từ file):
+    ${text.substring(0, 20000)} // Limit context
 
     Yêu cầu Output:
-    Trả về MỘT JSON duy nhất. Cấu trúc JSON:
+    Trả về MỘT JSON duy nhất. 
+    1. Nếu tìm thấy tên chủ đề khớp hoặc gần giống trong danh sách chuẩn, hãy dùng tên chuẩn đó.
+    2. Nếu ma trận gộp các mức độ, hãy cố gắng phân chia hợp lý.
+    
+    Cấu trúc JSON:
     {
       "detectedGrade": "Lớp 6" | "Lớp 7" | "Lớp 8" | "Lớp 9" | null,
-      "topics": [ { "name": "...", "parentName": "...", "matrix": { ... } } ]
+      "topics": [ 
+        { 
+            "name": "Tên chủ đề con", 
+            "parentName": "Tên chương lớn (nếu có)", 
+            "matrix": {
+                "multipleChoice": { "recognition": number, "comprehension": number, "application": number },
+                "trueFalse": { "recognition": number, "comprehension": number, "application": number },
+                "shortAnswer": { "recognition": number, "comprehension": number, "application": number },
+                "essay": { "recognition": number, "comprehension": number, "application": number }
+            }
+        } 
+      ]
     }
     `;
 
@@ -288,7 +329,7 @@ export const parseMatrixFromText = async (text: string, apiKey: string): Promise
         const jsonText = result.text;
         const parsed = JSON.parse(jsonText);
         
-        // --- SANITIZE TOPICS ---
+        // --- SANITIZE & NORMALIZE TOPICS WITH LOCAL DATA ---
         const sanitizedTopics: Topic[] = (Array.isArray(parsed.topics) ? parsed.topics : []).map((t: any) => {
             const sanitizeLevel = (l: any) => ({
                 recognition: Number(l?.recognition) || 0,
@@ -296,11 +337,33 @@ export const parseMatrixFromText = async (text: string, apiKey: string): Promise
                 application: Number(l?.application) || 0,
             });
 
+            // Post-processing: Try to match with Standard Data to fill missing info (like ParentName)
+            let finalName = t.name || "Chủ đề chưa đặt tên";
+            let finalParentName = t.parentName || "";
+            let description = t.description || "";
+
+            // Fuzzy match logic: Check if returned name is a substring of a standard topic or vice versa
+            if (detectedGrade) {
+                const match = validTopicsForGrade.find(vt => 
+                    vt.topic.toLowerCase().includes(finalName.toLowerCase()) || 
+                    finalName.toLowerCase().includes(vt.topic.toLowerCase())
+                );
+                
+                if (match) {
+                    finalName = match.topic; // Use exact standard name
+                    if (!finalParentName) finalParentName = match.parentTopic; // Auto-fill parent if missing
+                    // Optionally auto-fill description from standard content if empty
+                    if (!description && match.content) {
+                       description = `Gợi ý: ${match.content.nb.concat(match.content.th).slice(0, 3).join("; ")}...`;
+                    }
+                }
+            }
+
             return {
                 id: t.id || Date.now().toString() + Math.random().toString().slice(2),
-                name: t.name || "",
-                parentName: t.parentName || "",
-                description: t.description || "",
+                name: finalName,
+                parentName: finalParentName,
+                description: description,
                 matrix: {
                     multipleChoice: sanitizeLevel(t.matrix?.multipleChoice),
                     trueFalse: sanitizeLevel(t.matrix?.trueFalse),
@@ -312,11 +375,11 @@ export const parseMatrixFromText = async (text: string, apiKey: string): Promise
 
         return {
             topics: sanitizedTopics,
-            detectedGrade: parsed.detectedGrade || null
+            detectedGrade: parsed.detectedGrade || detectedGrade || null
         };
     } catch (e) {
         console.error("Parse Matrix Error", e);
-        throw new Error("Không thể phân tích ma trận từ file.");
+        throw new Error("Không thể phân tích ma trận từ file. Vui lòng kiểm tra định dạng file.");
     }
 }
 
