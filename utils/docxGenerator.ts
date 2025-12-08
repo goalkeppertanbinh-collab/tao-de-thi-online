@@ -26,6 +26,21 @@ export const generateWordBlob = async (content: string, docTitle: string = "Đ�
     });
   };
 
+  // Split by <br> and create multiple paragraphs for Table Cells
+  const createParagraphsFromCellText = (text: string, align: any = AlignmentType.CENTER) => {
+    const cleanText = text.replace(/<br\s*\/?>/gi, "<br>");
+    const lines = cleanText.split("<br>");
+    
+    return lines.map(line => {
+        const children = parseTextWithBold(line.trim());
+        return new Paragraph({
+            children: children,
+            alignment: align,
+            spacing: { after: 60, before: 60 }
+        });
+    });
+  };
+
   const lines = content.split("\n");
   const docChildren: any[] = [];
 
@@ -90,27 +105,72 @@ export const generateWordBlob = async (content: string, docTitle: string = "Đ�
     }
 
     if (line.startsWith("|")) {
-      const cells = line.split("|").filter((c, idx, arr) => {
+      // 1. Handle Escaped Pipes: Replace \| with a placeholder to avoid splitting
+      const safeLine = line.replace(/\\\|/g, "__ESCAPED_PIPE__");
+
+      const cells = safeLine.split("|").filter((c, idx, arr) => {
           if (idx === 0 && c === "") return false;
           if (idx === arr.length - 1 && c === "") return false;
           return true;
-      }).map(c => c.trim());
+      }).map(c => {
+          // Restore the escaped pipe as a normal character or LaTeX entity if needed
+          return c.trim().replace(/__ESCAPED_PIPE__/g, "|");
+      });
 
       if (line.includes("---")) continue;
 
       inTable = true;
 
-      const tableCells = cells.map(cellText => new TableCell({
-        children: [new Paragraph({ children: parseTextWithBold(cellText), alignment: AlignmentType.CENTER })], 
-        width: { size: 100 / cells.length, type: WidthType.PERCENTAGE },
-        verticalAlign: AlignmentType.CENTER,
-        borders: {
-            top: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-            bottom: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-            left: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-            right: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-        }
-      }));
+      // --- CALCULATE INTELLIGENT COLUMN WIDTHS ---
+      const numCols = cells.length;
+      let colWidths: number[] = [];
+
+      if (numCols === 3) {
+          // Likely Essay Table: Câu | Nội dung | Điểm
+          // Give 80% to Content to prevent overflow and wrapping issues
+          colWidths = [10, 80, 10]; 
+      } else if (numCols === 4) {
+          // Likely Answer Key with 2 codes: Câu | 801 | 802 | Điểm
+          colWidths = [15, 35, 35, 15];
+      } else if (numCols === 5) {
+           // Question Bank: Chủ đề | Câu | Nội dung | Đáp án | Điểm
+           colWidths = [15, 10, 50, 15, 10];
+      } else if (numCols > 5) {
+          // Generic: Small first/last, distribute rest
+          const small = 10;
+          const midTotal = 100 - (small * 2);
+          const midCount = numCols - 2;
+          colWidths = [small, ...Array(midCount).fill(midTotal / midCount), small];
+      } else {
+          // Default equal distribution
+          colWidths = Array(numCols).fill(100 / numCols);
+      }
+
+      const tableCells = cells.map((cellText, colIndex) => {
+          // --- ALIGNMENT LOGIC ---
+          let align = AlignmentType.CENTER;
+          
+          // Align Left for "Nội dung" columns
+          if (numCols === 3 && colIndex === 1) align = AlignmentType.LEFT;
+          if (numCols === 5 && colIndex === 2) align = AlignmentType.LEFT;
+          
+          // Heuristic: Long text -> Left Align
+          if (cellText.length > 25 && colIndex > 0 && colIndex < numCols - 1) {
+              align = AlignmentType.LEFT;
+          }
+
+          return new TableCell({
+            children: createParagraphsFromCellText(cellText, align),
+            width: { size: colWidths[colIndex], type: WidthType.PERCENTAGE },
+            verticalAlign: docx.VerticalAlign.CENTER,
+            borders: {
+                top: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+                bottom: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+                left: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+                right: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+            }
+          });
+      });
 
       tableRows.push(new TableRow({ children: tableCells }));
       continue;
@@ -325,7 +385,7 @@ export const generateSpecBlob = async (params: TestParams): Promise<Blob> => {
     const { Document, Packer, Table, TableRow, TableCell, AlignmentType, HeadingLevel, Paragraph, WidthType, PageOrientation, TextRun, BorderStyle, VerticalAlign } = docx;
 
     // Helper to create the detailed cell (e.g., "C1\nNLMH")
-    const createSpecCell = (count: number, startIdx: number, competency: string = "NLMH") => {
+    const createRangeCell = (count: number, startIdx: number, competency: string = "TDLL") => {
        if (count <= 0) return createDataCell(docx, "");
        
        const endIdx = startIdx + count - 1;
@@ -346,30 +406,34 @@ export const generateSpecBlob = async (params: TestParams): Promise<Blob> => {
        });
     };
 
-    // Header Structure
+    // Header Structure Matches the Screenshot
+    // Row 1: TT(r4), Topic(r4), Content(r4), Requirements(r4), Questions Breakdown (c12)
     const hRow1 = new TableRow({
         children: [
             createHeaderCell(docx, "TT", 4, 1, 5),
             createHeaderCell(docx, "Chủ đề/Chương", 4, 1, 15),
             createHeaderCell(docx, "Nội dung/ đơn vị kiến thức", 4, 1, 20),
-            createHeaderCell(docx, "Yêu cầu cần đạt", 4, 1, 25),
+            createHeaderCell(docx, "Yêu cầu cần đạt", 4, 1, 20),
             createHeaderCell(docx, "Số câu hỏi ở các mức độ đánh giá", 1, 12),
         ]
     });
+    // Row 2: TNKQ (c9), TL (c3)
     const hRow2 = new TableRow({
         children: [
             createHeaderCell(docx, "Trắc nghiệm khách quan", 1, 9),
             createHeaderCell(docx, "Tự luận", 1, 3),
         ]
     });
+    // Row 3: MC (c3), TF (c3), SA (c3), TL (c3)
     const hRow3 = new TableRow({
         children: [
             createHeaderCell(docx, "Nhiều lựa chọn", 1, 3),
             createHeaderCell(docx, "“Đúng – Sai”", 1, 3),
             createHeaderCell(docx, "Trả lời ngắn", 1, 3),
-            createHeaderCell(docx, "Tự luận", 1, 3), 
+            createHeaderCell(docx, "Tự luận", 1, 3),
         ]
     });
+    // Row 4: B-H-VD x4
     const hRow4 = new TableRow({
         children: Array(4).fill(null).flatMap(() => [
             createHeaderCell(docx, "Biết", 1, 1),
@@ -380,82 +444,94 @@ export const generateSpecBlob = async (params: TestParams): Promise<Blob> => {
 
     const rows = [hRow1, hRow2, hRow3, hRow4];
     
-    let globalQ = 1;
-    let totalMC = 0, totalTF = 0, totalSA = 0, totalEssay = 0;
+    // Calculate global starting indices for each type
+    // Assuming structure: All MC -> All TF -> All SA -> All Essay
+    let totalMC = 0, totalTF = 0, totalSA = 0, totalES = 0;
+    
+    params.topics.forEach(t => {
+         const sum = (l:any) => l.recognition + l.comprehension + l.application;
+         totalMC += sum(t.matrix.multipleChoice);
+         totalTF += sum(t.matrix.trueFalse);
+         totalSA += sum(t.matrix.shortAnswer);
+         totalES += sum(t.matrix.essay);
+    });
+
+    // Running counters for continuous numbering (Part 1 -> Part 4)
+    let globalCounterMC = 1;
+    let globalCounterTF = globalCounterMC + totalMC;
+    let globalCounterSA = globalCounterTF + totalTF;
+    let globalCounterES = globalCounterSA + totalSA;
 
     params.topics.forEach((t, idx) => {
         const m = t.matrix;
         
-        const sumType = (l: any) => l.recognition + l.comprehension + l.application;
-        totalMC += sumType(m.multipleChoice);
-        totalTF += sumType(m.trueFalse);
-        totalSA += sumType(m.shortAnswer);
-        totalEssay += sumType(m.essay);
-
         const cells = [];
         cells.push(createDataCell(docx, idx + 1));
-        cells.push(createDataCell(docx, t.parentName || t.name, AlignmentType.LEFT)); // Parent Name
-        cells.push(createDataCell(docx, t.name, AlignmentType.LEFT)); // Name
-        cells.push(createDataCell(docx, t.description || "Nắm vững kiến thức...", AlignmentType.LEFT));
+        cells.push(createDataCell(docx, t.parentName || t.name, AlignmentType.LEFT));
+        cells.push(createDataCell(docx, t.name, AlignmentType.LEFT));
+        cells.push(createDataCell(docx, t.description || "-", AlignmentType.LEFT));
 
-        // MC
-        cells.push(createSpecCell(m.multipleChoice.recognition, globalQ, "TDLL")); globalQ += m.multipleChoice.recognition;
-        cells.push(createSpecCell(m.multipleChoice.comprehension, globalQ, "MHH")); globalQ += m.multipleChoice.comprehension;
-        cells.push(createSpecCell(m.multipleChoice.application, globalQ, "GQVĐ")); globalQ += m.multipleChoice.application;
-        
+        // MC Multi
+        cells.push(createRangeCell(m.multipleChoice.recognition, globalCounterMC, "TDLL")); globalCounterMC += m.multipleChoice.recognition;
+        cells.push(createRangeCell(m.multipleChoice.comprehension, globalCounterMC, "MHH")); globalCounterMC += m.multipleChoice.comprehension;
+        cells.push(createRangeCell(m.multipleChoice.application, globalCounterMC, "GQVĐ")); globalCounterMC += m.multipleChoice.application;
+
         // TF
-        cells.push(createSpecCell(m.trueFalse.recognition, globalQ, "TDLL")); globalQ += m.trueFalse.recognition;
-        cells.push(createSpecCell(m.trueFalse.comprehension, globalQ, "GTTH")); globalQ += m.trueFalse.comprehension;
-        cells.push(createSpecCell(m.trueFalse.application, globalQ, "GQVĐ")); globalQ += m.trueFalse.application;
-        
+        cells.push(createRangeCell(m.trueFalse.recognition, globalCounterTF, "TDLL")); globalCounterTF += m.trueFalse.recognition;
+        cells.push(createRangeCell(m.trueFalse.comprehension, globalCounterTF, "GTTH")); globalCounterTF += m.trueFalse.comprehension;
+        cells.push(createRangeCell(m.trueFalse.application, globalCounterTF, "GQVĐ")); globalCounterTF += m.trueFalse.application;
+
         // SA
-        cells.push(createSpecCell(m.shortAnswer.recognition, globalQ, "TDLL")); globalQ += m.shortAnswer.recognition;
-        cells.push(createSpecCell(m.shortAnswer.comprehension, globalQ, "MHH")); globalQ += m.shortAnswer.comprehension;
-        cells.push(createSpecCell(m.shortAnswer.application, globalQ, "GQVĐ")); globalQ += m.shortAnswer.application;
-        
+        cells.push(createRangeCell(m.shortAnswer.recognition, globalCounterSA, "TDLL")); globalCounterSA += m.shortAnswer.recognition;
+        cells.push(createRangeCell(m.shortAnswer.comprehension, globalCounterSA, "MHH")); globalCounterSA += m.shortAnswer.comprehension;
+        cells.push(createRangeCell(m.shortAnswer.application, globalCounterSA, "GQVĐ")); globalCounterSA += m.shortAnswer.application;
+
         // Essay
-        cells.push(createSpecCell(m.essay.recognition, globalQ, "TDLL")); globalQ += m.essay.recognition;
-        cells.push(createSpecCell(m.essay.comprehension, globalQ, "GTTH")); globalQ += m.essay.comprehension;
-        cells.push(createSpecCell(m.essay.application, globalQ, "GQVĐ")); globalQ += m.essay.application;
+        cells.push(createRangeCell(m.essay.recognition, globalCounterES, "TDLL")); globalCounterES += m.essay.recognition;
+        cells.push(createRangeCell(m.essay.comprehension, globalCounterES, "GTTH")); globalCounterES += m.essay.comprehension;
+        cells.push(createRangeCell(m.essay.application, globalCounterES, "GQVĐ")); globalCounterES += m.essay.application;
 
         rows.push(new TableRow({ children: cells }));
     });
 
-    // --- SUMMARY ROWS (Total Questions, Score, Percentage) ---
-    const scoreMC = totalMC * params.pointValues.multipleChoice;
-    const scoreTF = totalTF * params.pointValues.trueFalse; 
-    const scoreSA = totalSA * params.pointValues.shortAnswer;
-    const scoreEssay = totalEssay * params.pointValues.essay;
-    const finalScore = scoreMC + scoreTF + scoreSA + scoreEssay;
-
+    // Summary Rows (Question Counts)
     rows.push(new TableRow({
         children: [
             createHeaderCell(docx, "Tổng số câu", 1, 4),
-            createDataCell(docx, totalMC, null, true, 3), 
-            createDataCell(docx, totalTF, null, true, 3), 
-            createDataCell(docx, totalSA, null, true, 3), 
-            createDataCell(docx, totalEssay, null, true, 3), 
+            createDataCell(docx, totalMC, null, true, 3),
+            createDataCell(docx, totalTF, null, true, 3),
+            createDataCell(docx, totalSA, null, true, 3),
+            createDataCell(docx, totalES, null, true, 3),
         ]
     }));
 
+    const scoreMC = totalMC * params.pointValues.multipleChoice;
+    const scoreTF = totalTF * params.pointValues.trueFalse; 
+    const scoreSA = totalSA * params.pointValues.shortAnswer;
+    const scoreES = totalES * params.pointValues.essay;
+    const finalScore = scoreMC + scoreTF + scoreSA + scoreES;
+
+    // Summary Rows (Scores)
     rows.push(new TableRow({
         children: [
             createHeaderCell(docx, "Tổng số điểm", 1, 4),
             createDataCell(docx, scoreMC.toFixed(1).replace('.', ','), null, true, 3),
             createDataCell(docx, scoreTF.toFixed(1).replace('.', ','), null, true, 3),
             createDataCell(docx, scoreSA.toFixed(1).replace('.', ','), null, true, 3),
-            createDataCell(docx, scoreEssay.toFixed(1).replace('.', ','), null, true, 3),
+            createDataCell(docx, scoreES.toFixed(1).replace('.', ','), null, true, 3),
         ]
     }));
 
     const fmtPct = (val: number, total: number) => total > 0 ? ((val/total)*100).toFixed(0) : "0";
+    
+    // Summary Rows (Percentage)
     rows.push(new TableRow({
         children: [
             createHeaderCell(docx, "Tỉ lệ %", 1, 4),
             createDataCell(docx, fmtPct(scoreMC, finalScore), null, true, 3),
             createDataCell(docx, fmtPct(scoreTF, finalScore), null, true, 3),
             createDataCell(docx, fmtPct(scoreSA, finalScore), null, true, 3),
-            createDataCell(docx, fmtPct(scoreEssay, finalScore), null, true, 3),
+            createDataCell(docx, fmtPct(scoreES, finalScore), null, true, 3),
         ]
     }));
 
@@ -474,7 +550,7 @@ export const generateSpecBlob = async (params: TestParams): Promise<Blob> => {
 
 export const generateBankBlob = async (result: string, params: TestParams): Promise<Blob> => {
     const docx = await import("docx");
-    const { Document, Packer, Table, TableRow, AlignmentType, HeadingLevel, Paragraph, WidthType, PageOrientation } = docx;
+    const { Document, Packer, Table, TableRow, TableCell, AlignmentType, HeadingLevel, Paragraph, WidthType, PageOrientation, BorderStyle, VerticalAlign } = docx;
 
     const headerRegex = /(?:^|\n)#{1,3}\s*NGÂN\s+HÀNG\s+CÂU\s+HỎI/i;
     const parts = result.split(headerRegex);
@@ -511,6 +587,19 @@ export const generateBankBlob = async (result: string, params: TestParams): Prom
         ]
     }));
 
+    // Re-use logic for <br> splitting in tables
+    const createParagraphs = (text: string, align: any = AlignmentType.CENTER) => {
+        const cleanText = text.replace(/<br\s*\/?>/gi, "<br>");
+        const lines = cleanText.split("<br>");
+        return lines.map(line => {
+             return new Paragraph({
+                children: [new docx.TextRun({ text: line.trim(), font: "Times New Roman", size: 22 })],
+                alignment: align,
+                spacing: { after: 60, before: 60 }
+            });
+        });
+    };
+
     parsedQuestions.forEach(q => {
         const topic = q[0] || "";
         const qNum = q[1] || "";
@@ -523,11 +612,31 @@ export const generateBankBlob = async (result: string, params: TestParams): Prom
 
         rows.push(new TableRow({
             children: [
-                createDataCell(docx, topic, AlignmentType.LEFT),
-                createDataCell(docx, combinedLevel),
-                createDataCell(docx, content, AlignmentType.LEFT),
-                createDataCell(docx, answer),
-                createDataCell(docx, score),
+                new TableCell({
+                    children: createParagraphs(topic, AlignmentType.LEFT),
+                    verticalAlign: VerticalAlign.CENTER,
+                    borders: { top: { style: BorderStyle.SINGLE, size: 1 }, bottom: { style: BorderStyle.SINGLE, size: 1 }, left: { style: BorderStyle.SINGLE, size: 1 }, right: { style: BorderStyle.SINGLE, size: 1 } }
+                }),
+                new TableCell({
+                    children: createParagraphs(combinedLevel),
+                    verticalAlign: VerticalAlign.CENTER,
+                    borders: { top: { style: BorderStyle.SINGLE, size: 1 }, bottom: { style: BorderStyle.SINGLE, size: 1 }, left: { style: BorderStyle.SINGLE, size: 1 }, right: { style: BorderStyle.SINGLE, size: 1 } }
+                }),
+                new TableCell({
+                    children: createParagraphs(content, AlignmentType.LEFT), // Left alignment for questions
+                    verticalAlign: VerticalAlign.CENTER,
+                    borders: { top: { style: BorderStyle.SINGLE, size: 1 }, bottom: { style: BorderStyle.SINGLE, size: 1 }, left: { style: BorderStyle.SINGLE, size: 1 }, right: { style: BorderStyle.SINGLE, size: 1 } }
+                }),
+                new TableCell({
+                    children: createParagraphs(answer),
+                    verticalAlign: VerticalAlign.CENTER,
+                    borders: { top: { style: BorderStyle.SINGLE, size: 1 }, bottom: { style: BorderStyle.SINGLE, size: 1 }, left: { style: BorderStyle.SINGLE, size: 1 }, right: { style: BorderStyle.SINGLE, size: 1 } }
+                }),
+                new TableCell({
+                    children: createParagraphs(score),
+                    verticalAlign: VerticalAlign.CENTER,
+                    borders: { top: { style: BorderStyle.SINGLE, size: 1 }, bottom: { style: BorderStyle.SINGLE, size: 1 }, left: { style: BorderStyle.SINGLE, size: 1 }, right: { style: BorderStyle.SINGLE, size: 1 } }
+                }),
             ]
         }));
     });

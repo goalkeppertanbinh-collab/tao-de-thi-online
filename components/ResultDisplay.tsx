@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import rehypeRaw from "rehype-raw";
 import { Download, FileWarning, FileText, FileSpreadsheet, Copy, Check, Database, ChevronDown, CheckCircle, Eye, EyeOff, Table, Archive, FileCheck, ChevronUp, FileType } from "lucide-react";
 import { exportToWord, exportMatrixDocx, exportSpecDocx, exportBankDocx, generateMatrixBlob, generateSpecBlob, generateBankBlob, generateWordBlob } from "../utils/docxGenerator";
 import { TestParams } from "../types";
@@ -304,7 +305,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ result, error, params, is
         ) : (
             <div className="p-8">
                 <div className="max-w-4xl mx-auto markdown-body">
-                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{result}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex, rehypeRaw]}>{result}</ReactMarkdown>
                 </div>
             </div>
         )}
