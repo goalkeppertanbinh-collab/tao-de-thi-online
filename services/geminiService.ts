@@ -98,7 +98,7 @@ CẤU TRÚC OUTPUT:
 
 const formatTopicMatrix = (topics: Topic[]) => {
   let matrixStr = "MA TRẬN ĐẶC TẢ CHI TIẾT:\n";
-  const sumLevels = (l: LevelCounts) => l.recognition + l.comprehension + l.application;
+  const sumLevels = (l: LevelCounts) => (l?.recognition || 0) + (l?.comprehension || 0) + (l?.application || 0);
   
   let globalTotals = {
     rec: 0, comp: 0, app: 0,
@@ -106,30 +106,33 @@ const formatTopicMatrix = (topics: Topic[]) => {
   };
 
   topics.forEach((t, index) => {
+    // Safety check for matrix structure
+    if (!t.matrix || !t.matrix.multipleChoice) return;
+
     const parent = t.parentName ? `(Chương: ${t.parentName})` : "";
     matrixStr += `- Chủ đề ${index + 1}: "${t.name}" ${parent}${t.description ? `\n    (Yêu cầu chi tiết: ${t.description})` : ""}\n`;
     
     const mcTotal = sumLevels(t.matrix.multipleChoice);
     if (mcTotal > 0) {
-      matrixStr += `  + Trắc nghiệm: ${mcTotal} câu (${t.matrix.multipleChoice.recognition} NB, ${t.matrix.multipleChoice.comprehension} TH, ${t.matrix.multipleChoice.application} VD)\n`;
+      matrixStr += `  + Trắc nghiệm: ${mcTotal} câu (${t.matrix.multipleChoice.recognition || 0} NB, ${t.matrix.multipleChoice.comprehension || 0} TH, ${t.matrix.multipleChoice.application || 0} VD)\n`;
       globalTotals.mc += mcTotal;
     }
 
     const tfTotal = sumLevels(t.matrix.trueFalse);
     if (tfTotal > 0) {
-      matrixStr += `  + Đúng/Sai: ${tfTotal} câu (${t.matrix.trueFalse.recognition} NB, ${t.matrix.trueFalse.comprehension} TH, ${t.matrix.trueFalse.application} VD)\n`;
+      matrixStr += `  + Đúng/Sai: ${tfTotal} câu (${t.matrix.trueFalse.recognition || 0} NB, ${t.matrix.trueFalse.comprehension || 0} TH, ${t.matrix.trueFalse.application || 0} VD)\n`;
       globalTotals.tf += tfTotal;
     }
 
     const saTotal = sumLevels(t.matrix.shortAnswer);
     if (saTotal > 0) {
-      matrixStr += `  + Trả lời ngắn: ${saTotal} câu (${t.matrix.shortAnswer.recognition} NB, ${t.matrix.shortAnswer.comprehension} TH, ${t.matrix.shortAnswer.application} VD)\n`;
+      matrixStr += `  + Trả lời ngắn: ${saTotal} câu (${t.matrix.shortAnswer.recognition || 0} NB, ${t.matrix.shortAnswer.comprehension || 0} TH, ${t.matrix.shortAnswer.application || 0} VD)\n`;
       globalTotals.sa += saTotal;
     }
 
     const esTotal = sumLevels(t.matrix.essay);
     if (esTotal > 0) {
-      matrixStr += `  + Tự luận: ${esTotal} câu (${t.matrix.essay.recognition} NB, ${t.matrix.essay.comprehension} TH, ${t.matrix.essay.application} VD)\n`;
+      matrixStr += `  + Tự luận: ${esTotal} câu (${t.matrix.essay.recognition || 0} NB, ${t.matrix.essay.comprehension || 0} TH, ${t.matrix.essay.application || 0} VD)\n`;
       globalTotals.es += esTotal;
     }
   });
@@ -285,8 +288,30 @@ export const parseMatrixFromText = async (text: string, apiKey: string): Promise
         const jsonText = result.text;
         const parsed = JSON.parse(jsonText);
         
+        // --- SANITIZE TOPICS ---
+        const sanitizedTopics: Topic[] = (Array.isArray(parsed.topics) ? parsed.topics : []).map((t: any) => {
+            const sanitizeLevel = (l: any) => ({
+                recognition: Number(l?.recognition) || 0,
+                comprehension: Number(l?.comprehension) || 0,
+                application: Number(l?.application) || 0,
+            });
+
+            return {
+                id: t.id || Date.now().toString() + Math.random().toString().slice(2),
+                name: t.name || "",
+                parentName: t.parentName || "",
+                description: t.description || "",
+                matrix: {
+                    multipleChoice: sanitizeLevel(t.matrix?.multipleChoice),
+                    trueFalse: sanitizeLevel(t.matrix?.trueFalse),
+                    shortAnswer: sanitizeLevel(t.matrix?.shortAnswer),
+                    essay: sanitizeLevel(t.matrix?.essay),
+                }
+            };
+        });
+
         return {
-            topics: Array.isArray(parsed.topics) ? parsed.topics : [],
+            topics: sanitizedTopics,
             detectedGrade: parsed.detectedGrade || null
         };
     } catch (e) {
