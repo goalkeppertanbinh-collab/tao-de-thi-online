@@ -4,7 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
-import { Download, FileWarning, FileText, FileSpreadsheet, Copy, Check, Database, ChevronDown, CheckCircle, Eye, EyeOff, Table, Archive, FileCheck, ChevronUp, FileType, X, Printer } from "lucide-react";
+import { Download, FileWarning, FileText, FileSpreadsheet, Copy, Check, Database, ChevronDown, CheckCircle, Eye, EyeOff, Table, Archive, FileCheck, ChevronUp, FileType, X, Printer, ExternalLink, Code } from "lucide-react";
 import { exportToWord, exportMatrixDocx, exportSpecDocx, exportBankDocx, generateMatrixBlob, generateSpecBlob, generateBankBlob, generateWordBlob } from "../utils/docxGenerator";
 import { TestParams, Topic } from "../types";
 
@@ -67,6 +67,250 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ result, error, params, is
       if (type === 'test') return testPart.trim();
       if (type === 'hdc') return hdcPart.trim();
       return setContent;
+  };
+
+  // --- HELPER: CONVERT MARKDOWN TO LATEX ---
+  const convertMarkdownToLatex = (markdown: string, title: string) => {
+    // Advanced LaTeX Preamble for Vietnamese Math
+    let latex = `\\documentclass[12pt,a4paper]{article}
+\\usepackage[utf8]{inputenc}
+\\usepackage[T5]{fontenc} % Font encoding for Vietnamese
+\\usepackage[vietnamese]{babel} % Vietnamese language support
+\\usepackage{amsmath,amssymb,amsthm} % Math packages
+\\usepackage{mathptmx} % Times New Roman like font
+\\usepackage{geometry}
+\\usepackage{graphicx}
+\\usepackage{longtable} % Multi-page tables
+\\usepackage{array}
+\\usepackage{calc}
+\\usepackage{xcolor}
+\\usepackage{tikz}
+\\usepackage{tkz-euclide}
+\\usepackage{enumitem}
+\\usepackage{fancyhdr}
+\\usepackage[hidelinks]{hyperref}
+
+% Page Geometry
+\\geometry{left=2cm,right=2cm,top=2cm,bottom=2cm}
+
+% Custom column types for wrapping text in tables
+\\newcolumntype{L}[1]{>{\\raggedright\\arraybackslash}p{#1}}
+\\newcolumntype{C}[1]{>{\\centering\\arraybackslash}p{#1}}
+\\newcolumntype{R}[1]{>{\\raggedleft\\arraybackslash}p{#1}}
+
+% Header setup
+\\pagestyle{fancy}
+\\fancyhf{}
+\\rhead{\\small MathGen 7991}
+\\lhead{\\small ${title}}
+\\cfoot{\\thepage}
+
+\\title{${title}}
+\\author{}
+\\date{}
+
+\\begin{document}
+
+% Exam Header Box
+\\noindent
+\\begin{tabular}{|p{0.95\\textwidth}|}
+\\hline
+\\textbf{Trường:} ........................................................ \\\\
+\\textbf{Lớp:} .......................... \\textbf{Họ và tên:} ........................................................ \\\\
+\\hline
+\\multicolumn{1}{|c|}{\\textbf{${title.toUpperCase()}}} \\\\
+\\hline
+\\end{tabular}
+\\vspace{0.5cm}
+
+`;
+
+    // Helper to escape LaTeX special characters ONLY in text mode (not math)
+    const escapeText = (text: string) => {
+      return text
+        .replace(/\\/g, '\\textbackslash ')
+        .replace(/#/g, '\\#')
+        .replace(/%/g, '\\%')
+        .replace(/&/g, '\\&')
+        .replace(/_/g, '\\_')
+        .replace(/{/g, '\\{')
+        .replace(/}/g, '\\}')
+        .replace(/\^/g, '\\^{}')
+        .replace(/~/g, '\\~{}')
+        .replace(/</g, '\\textless ')
+        .replace(/>/g, '\\textgreater ');
+    };
+
+    // Split by lines to process headers and tables
+    const lines = markdown.split('\n');
+    let inTable = false;
+    let tableAlign = "";
+    
+    // Process line by line
+    for (let i = 0; i < lines.length; i++) {
+        let line = lines[i].trim();
+
+        // 1. HEADERS
+        if (line.startsWith('# ')) {
+            latex += `\\section*{${escapeText(line.replace('# ', ''))}}\n`;
+            continue;
+        }
+        if (line.startsWith('## ')) {
+            // Check if it's "BỘ ĐỀ SỐ X" to add a visual break
+            if (line.toUpperCase().includes('BỘ ĐỀ')) {
+                 latex += `\\clearpage\n\\section*{${escapeText(line.replace('## ', ''))}}\n`;
+            } else {
+                 latex += `\\section*{${escapeText(line.replace('## ', ''))}}\n`;
+            }
+            continue;
+        }
+        if (line.startsWith('### ')) {
+            latex += `\\subsection*{${escapeText(line.replace('### ', ''))}}\n`;
+            continue;
+        }
+        if (line.startsWith('#### ')) {
+            latex += `\\paragraph*{${escapeText(line.replace('#### ', ''))}}\n`;
+            continue;
+        }
+
+        // 2. TABLES
+        if (line.startsWith('|')) {
+            // Skip Markdown separator line |---|---|
+            if (line.includes('---')) continue;
+
+            // Handle Escaped Pipes inside math like |x|
+            // Strategy: Temporarily hide | inside $...$ before splitting
+            const tempPlaceholder = "___PIPE___";
+            let processedLineForSplit = "";
+            let inMath = false;
+            for(let char of line) {
+                if(char === '$') inMath = !inMath;
+                if(char === '|' && inMath) processedLineForSplit += tempPlaceholder;
+                else processedLineForSplit += char;
+            }
+
+            const cells = processedLineForSplit.split('|')
+                .filter((c, idx, arr) => idx !== 0 && idx !== arr.length - 1)
+                .map(c => c.replace(new RegExp(tempPlaceholder, 'g'), '|'));
+            
+            // Start Table
+            if (!inTable) {
+                inTable = true;
+                const cols = cells.length;
+                
+                // --- INTELLIGENT COLUMN WIDTHS ---
+                // Case 1: Question Bank (Usually 5 cols: Topic | Num | Content | Ans | Score)
+                if (cols === 5) {
+                    // TT(1cm) | Code(2cm) | Content(10cm) | Ans(2cm) | Score(1.5cm)
+                    tableAlign = "|C{1cm}|C{2cm}|L{9.5cm}|C{2cm}|C{1.5cm}|";
+                }
+                // Case 2: Answer Key (Usually 4 cols: Q | Code1 | Code2 | Score)
+                else if (cols === 4) {
+                    tableAlign = "|C{1.5cm}|C{4cm}|C{4cm}|C{2cm}|";
+                }
+                // Case 3: Simple Answer (3 cols)
+                else if (cols === 3) {
+                    tableAlign = "|C{2cm}|L{10cm}|C{2cm}|";
+                }
+                // Default: Even distribution
+                else {
+                    const width = (16 / cols).toFixed(1);
+                    tableAlign = "|" + `C{${width}cm}|`.repeat(cols);
+                }
+
+                latex += `\\begin{center}\n\\renewcommand{\\arraystretch}{1.5}\n\\begin{longtable}{${tableAlign}}\n\\hline\n`;
+                
+                // Add Header Row for this first line
+                const headerRow = cells.map(cell => `\\textbf{${escapeText(cell.trim())}}`).join(' & ');
+                latex += `${headerRow} \\\\ \\hline \\endhead \n`;
+                continue; // Skip processing this line as data, it was header
+            }
+
+            // Process Data Cells
+            const rowLatex = cells.map(cell => {
+                let c = cell.trim();
+                
+                // Handle bold inside cell
+                c = c.replace(/\*\*(.*?)\*\*/g, "\\textbf{$1}");
+                
+                // Handle <br> as \newline
+                // Note: In LaTeX table cells, \newline works in p{}, m{}, b{} columns.
+                // Our C/L/R types define p{}, so this is safe.
+                c = c.replace(/<br\s*\/?>/gi, " \\newline ");
+                
+                // Escape text but keep math
+                const parts = c.split('$');
+                return parts.map((part, idx) => {
+                    if (idx % 2 === 0) return escapeText(part); // Text
+                    else return `$${part}$`; // Math
+                }).join('');
+            }).join(' & ');
+
+            latex += `${rowLatex} \\\\ \\hline\n`;
+            continue;
+        } else if (inTable) {
+            // End Table if line doesn't start with |
+            latex += `\\end{longtable}\n\\end{center}\n`;
+            inTable = false;
+        }
+
+        if (line === "") {
+            latex += "\n";
+            continue;
+        }
+
+        // 3. REGULAR TEXT (Handle Bold, Italic, Math)
+        
+        // Bold
+        line = line.replace(/\*\*(.*?)\*\*/g, "\\textbf{$1}");
+        // Italic
+        line = line.replace(/\*(.*?)\*/g, "\\textit{$1}");
+        
+        // Split by Math Delimiter ($) to escape only text
+        const segments = line.split('$');
+        const processedLine = segments.map((seg, idx) => {
+            if (idx % 2 === 0) {
+                // Text mode -> Escape
+                return escapeText(seg);
+            } else {
+                // Math mode -> Keep as is, but ensure no <br> inside math
+                return `$${seg}$`;
+            }
+        }).join('');
+
+        // Handle newlines in text (Markdown paragraph break is double newline)
+        // Here we just append the line.
+        latex += `${processedLine}\n\n`;
+    }
+
+    if (inTable) {
+        latex += `\\end{longtable}\n\\end{center}\n`;
+    }
+
+    latex += `\n\\end{document}`;
+    return latex;
+  };
+
+  const handleOpenOverleaf = (content: string, title: string) => {
+      if (!content) return;
+      
+      const latexCode = convertMarkdownToLatex(content, title);
+      
+      // Form submission to Overleaf
+      const form = document.createElement("form");
+      form.action = "https://www.overleaf.com/docs";
+      form.method = "POST";
+      form.target = "_blank";
+
+      const input = document.createElement("textarea");
+      input.name = "snip";
+      input.value = latexCode;
+      input.style.display = "none";
+
+      form.appendChild(input);
+      document.body.appendChild(form);
+      form.submit();
+      document.body.removeChild(form);
   };
 
   // --- HTML RENDERERS FOR STRUCTURED PREVIEWS ---
@@ -429,10 +673,18 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ result, error, params, is
                                 <div className="p-2 bg-white rounded-full text-purple-600 border border-slate-100"><Database className="w-6 h-6" /></div>
                                 <span className="font-bold text-slate-700 text-sm">Ngân hàng câu hỏi</span>
                             </div>
-                            <div className="flex gap-2 mt-auto">
-                                <button onClick={handlePreviewBank} className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200"><Eye className="w-3 h-3"/> Xem</button>
-                                <button onClick={handleDownloadBank} disabled={isExportingBank} className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-bold text-green-600 bg-green-50 hover:bg-green-100 rounded border border-green-200">
-                                   {isExportingBank ? <Spinner /> : <Download className="w-3 h-3"/>} Tải
+                            <div className="flex flex-col gap-2 mt-auto">
+                                <div className="flex gap-2">
+                                    <button onClick={handlePreviewBank} className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200"><Eye className="w-3 h-3"/> Xem</button>
+                                    <button onClick={handleDownloadBank} disabled={isExportingBank} className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-bold text-green-600 bg-green-50 hover:bg-green-100 rounded border border-green-200">
+                                    {isExportingBank ? <Spinner /> : <Download className="w-3 h-3"/>} Tải
+                                    </button>
+                                </div>
+                                <button 
+                                    onClick={() => handleOpenOverleaf(extractContent(result, 0, 'bank'), "Ngan_Hang_Cau_Hoi")}
+                                    className="w-full flex items-center justify-center gap-1 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded border border-emerald-200"
+                                >
+                                    <ExternalLink className="w-3 h-3"/> Overleaf
                                 </button>
                             </div>
                         </div>
@@ -443,10 +695,25 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ result, error, params, is
                                 <div className="p-2 bg-white rounded-full text-orange-600 border border-slate-100"><FileCheck className="w-6 h-6" /></div>
                                 <span className="font-bold text-slate-700 text-sm">Hướng dẫn chấm</span>
                             </div>
-                            <div className="flex gap-2 mt-auto">
-                                <button onClick={handlePreviewHDC} className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200"><Eye className="w-3 h-3"/> Xem</button>
-                                <button onClick={handleDownloadHDC} disabled={isExportingHDC} className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-bold text-green-600 bg-green-50 hover:bg-green-100 rounded border border-green-200">
-                                   {isExportingHDC ? <Spinner /> : <Download className="w-3 h-3"/>} Tải
+                            <div className="flex flex-col gap-2 mt-auto">
+                                <div className="flex gap-2">
+                                    <button onClick={handlePreviewHDC} className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200"><Eye className="w-3 h-3"/> Xem</button>
+                                    <button onClick={handleDownloadHDC} disabled={isExportingHDC} className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-bold text-green-600 bg-green-50 hover:bg-green-100 rounded border border-green-200">
+                                    {isExportingHDC ? <Spinner /> : <Download className="w-3 h-3"/>} Tải
+                                    </button>
+                                </div>
+                                <button 
+                                    onClick={() => {
+                                        let fullHDC = "";
+                                        for (let i = 0; i < (params?.testSets.length || 0); i++) {
+                                            const hdc = extractContent(result, i, 'hdc');
+                                            if (hdc) fullHDC += hdc + "\n\n";
+                                        }
+                                        handleOpenOverleaf(fullHDC, "Huong_Dan_Cham");
+                                    }}
+                                    className="w-full flex items-center justify-center gap-1 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded border border-emerald-200"
+                                >
+                                    <ExternalLink className="w-3 h-3"/> Overleaf
                                 </button>
                             </div>
                         </div>
@@ -463,12 +730,20 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ result, error, params, is
                                     <div className="font-bold text-slate-800 text-sm">Bộ đề số {idx + 1}</div>
                                     <div className="text-xs text-slate-500 mt-1">Mã: {set.specificCodes}</div>
                                 </div>
-                                <div className="flex gap-2">
-                                    <button onClick={() => handlePreviewSet(idx)} className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors">
-                                        <Eye className="w-3 h-3"/> Xem
-                                    </button>
-                                    <button onClick={() => handleDownloadSet(idx)} disabled={isExporting} className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-bold text-green-600 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors">
-                                        {isExporting ? <Spinner /> : <Download className="w-3 h-3"/>} Tải
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex gap-2">
+                                        <button onClick={() => handlePreviewSet(idx)} className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors">
+                                            <Eye className="w-3 h-3"/> Xem
+                                        </button>
+                                        <button onClick={() => handleDownloadSet(idx)} disabled={isExporting} className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-bold text-green-600 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors">
+                                            {isExporting ? <Spinner /> : <Download className="w-3 h-3"/>} Tải
+                                        </button>
+                                    </div>
+                                    <button 
+                                        onClick={() => handleOpenOverleaf(extractContent(result, idx, 'test'), `De_Thi_So_${idx+1}`)}
+                                        className="w-full flex items-center justify-center gap-1 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded border border-emerald-200 transition-colors"
+                                    >
+                                        <ExternalLink className="w-3 h-3"/> Xem trên Overleaf (Latex)
                                     </button>
                                 </div>
                             </div>
