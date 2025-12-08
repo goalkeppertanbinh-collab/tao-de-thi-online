@@ -58,13 +58,17 @@ QUY ĐỊNH ĐỊNH DẠNG HIỂN THỊ (NGHIÊM NGẶT):
    |---|---|---|---|---|
    | 15 | $x = 2$ | $x = -2$ | ... | 0,5 |
 
-   B. PHẦN TỰ LUẬN (IV) - BẮT BUỘC KẺ BẢNG CHI TIẾT LỜI GIẢI:
+   B. PHẦN TỰ LUẬN (IV) - QUY TẮC BẢNG (RẤT QUAN TRỌNG):
+   - BẮT BUỘC: Đáp án/Lời giải của MỘT câu phải nằm trọn trong MỘT Ô (Cell). KHÔNG ĐƯỢC để lời giải tràn sang cột khác hay dòng khác.
+   - Khi cần xuống dòng trong lời giải: Sử dụng thẻ HTML <br> hoặc <br/>. KHÔNG ĐƯỢC dùng phím Enter (ký tự xuống dòng của Markdown) vì sẽ làm vỡ bảng.
+   
+   * Mẫu Bảng IV (Tự luận):
    | Câu | Lời giải sơ lược / Các bước chấm | Điểm |
    |---|---|---|
-   | 19 | a) Phương trình hoành độ giao điểm... <br> Tính $\Delta = ...$ (0,25 điểm) <br> => $x_1=..., x_2=...$ (0,25 điểm) | 1,0 |
+   | 19 | a) Phương trình... <br> $\Delta = ...$ (0,25 điểm) <br> => $x_1=..., x_2=...$ (0,25 điểm) | 1,0 |
    | | b) Thay x vào biểu thức P... (0,5 điểm) | |
 
-   Lưu ý phần Tự luận: Cột "Lời giải" chỉ ghi các bước giải vắn tắt và đáp số cuối cùng kèm thang điểm thành phần. KHÔNG chép lại đề bài "Cho phương trình...".
+   Lưu ý: Cột "Lời giải" chỉ ghi các bước giải vắn tắt và đáp số cuối cùng. KHÔNG chép lại đề bài.
 
 QUY TRÌNH TẠO ĐỀ (LOGIC TRỘN):
 1. Luôn soạn thảo Mã đề đầu tiên (Mã gốc) trước.
@@ -86,7 +90,7 @@ CẤU TRÚC OUTPUT MONG MUỐN:
 (Bảng tổng hợp đáp án I, II, III - KHÔNG KÈM ĐỀ)
 
 #### IV. Tự luận:
-(Bảng lời giải và thang điểm - KHÔNG KÈM ĐỀ)
+(Bảng lời giải và thang điểm - DÙNG THẺ <br> ĐỂ XUỐNG DÒNG TRONG Ô)
 
 ## NGÂN HÀNG CÂU HỎI
 (Bảng tổng hợp câu hỏi nguồn từ Mã Gốc)

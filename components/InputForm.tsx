@@ -545,8 +545,8 @@ const InputForm: React.FC<InputFormProps> = ({
                   </div>
               ) : (
                   <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 lg:gap-8">
-                      {/* INPUT SECTION - Expanded to 8 columns on extra large screens */}
-                      <div className="xl:col-span-8 lg:col-span-7 space-y-4">
+                      {/* INPUT SECTION - Expanded to 9 columns on extra large screens (Was 8) */}
+                      <div className="xl:col-span-9 lg:col-span-7 space-y-4">
                           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                               <div className="flex justify-between items-center mb-3">
                                 <h4 className="font-bold text-slate-700">{editingId ? "Chỉnh sửa chủ đề" : "Thêm chủ đề mới"}</h4>
@@ -738,8 +738,8 @@ const InputForm: React.FC<InputFormProps> = ({
                           </div>
                       </div>
 
-                      {/* LIST SECTION - Condensed to 4 columns on extra large screens */}
-                      <div className="xl:col-span-4 lg:col-span-5">
+                      {/* LIST SECTION - Condensed to 3 columns on extra large screens (Was 4) */}
+                      <div className="xl:col-span-3 lg:col-span-5">
                           <h4 className="font-bold text-slate-700 mb-3 flex items-center gap-2"><ListChecks className="w-4 h-4" /> Danh sách Chủ đề đã thêm</h4>
                           <div className="space-y-2 max-h-[400px] lg:max-h-[600px] overflow-y-auto custom-scrollbar">
                               {params.topics.length === 0 ? (
