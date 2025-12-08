@@ -35,6 +35,7 @@ Ví dụ:
 | 1 | B | C | 0,25 |
 | 2 | A | A | 0,25 |
 | ... | ... | ... | ... |
+*Lưu ý: Bảng đáp án phải tương ứng đúng với nội dung câu hỏi ở vị trí đó trong từng mã đề.*
 
 B. MẪU BẢNG CHO PHẦN II (ĐÚNG/SAI):
 Ghi rõ từng ý a, b, c, d là Đ hay S.
@@ -65,9 +66,13 @@ VÍ DỤ MẪU TỰ LUẬN (Làm y hệt mẫu này):
 
 ---
 
-QUY TRÌNH TẠO ĐỀ:
+QUY TRÌNH TẠO ĐỀ VÀ TRỘN ĐỀ:
 1. Soạn thảo Mã đề Gốc trước.
-2. Tạo các Mã đề Trộn bằng cách hoán vị đáp án (với Trắc nghiệm) nhưng GIỮ NGUYÊN Tự luận.
+2. Tạo các Mã đề Trộn dựa trên Mã Gốc:
+   - Phần Tự luận (IV): GIỮ NGUYÊN thứ tự và nội dung.
+   - Phần Trắc nghiệm (I, II, III): BẮT BUỘC PHẢI THỰC HIỆN 2 VIỆC:
+     + Việc 1: HOÁN VỊ THỨ TỰ CÂU HỎI (Ví dụ: Câu 1 ở đề gốc đảo xuống thành câu 5 ở đề trộn).
+     + Việc 2: HOÁN VỊ THỨ TỰ ĐÁP ÁN (A, B, C, D) trong từng câu.
 
 CẤU TRÚC OUTPUT:
 ## BỘ ĐỀ SỐ [N] (Các mã: [Danh sách mã])
@@ -165,10 +170,14 @@ const generateUserPrompt = (params: TestParams) => {
 BỘ ĐỀ SỐ ${index + 1}:
 1. MÃ ĐỀ GỐC: ${sourceCode}
 2. CÁC MÃ ĐỀ TRỘN: ${derivedCodes.join(", ")}
-   - Phần Tự luận: GIỮ NGUYÊN nội dung như Mã Gốc.
-   - Phần Trắc nghiệm: TRỘN (Hoán vị) đáp án và câu hỏi.
+   - QUY TẮC TRỘN ĐỀ (NGHIÊM NGẶT):
+     + Phần Tự luận (IV): GIỮ NGUYÊN thứ tự và nội dung.
+     + Phần Trắc nghiệm (I, II, III):
+       1. HOÁN VỊ THỨ TỰ CÂU HỎI: Đảo lộn vị trí các câu hỏi trong cùng một phần (Ví dụ: Câu 1 đề gốc -> Câu 5 đề trộn).
+       2. HOÁN VỊ ĐÁP ÁN: Đảo lộn vị trí các lựa chọn A, B, C, D.
 3. YÊU CẦU HƯỚNG DẪN CHẤM:
    - Lập bảng so sánh đáp án của [${sourceCode}, ${derivedCodes.join(", ")}] đặt cạnh nhau.
+   - Lưu ý: Vì đã trộn câu hỏi, nên hàng số 1 trong bảng đáp án phải tương ứng với Câu 1 của từng mã đề (dù nội dung câu 1 của các mã đề khác nhau).
 ---------------------------------------------------
 `;
   });
