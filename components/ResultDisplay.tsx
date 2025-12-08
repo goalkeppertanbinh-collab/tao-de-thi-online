@@ -364,6 +364,9 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ result, error, params, is
 
   const Spinner = () => <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></span>;
 
+  // Determine if we need landscape orientation for the preview
+  const isLandscapePreview = previewData?.type === 'matrix' || previewData?.type === 'spec';
+
   return (
     <div className="bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col h-full overflow-hidden relative">
       <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
@@ -478,24 +481,29 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ result, error, params, is
       {/* --- PREVIEW MODAL --- */}
       {previewData && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in">
-              <div className="bg-white w-full max-w-4xl h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+              {/* Increased width to 90vw or max-w-screen-xl for landscape papers */}
+              <div className="bg-white w-full max-w-[90vw] h-[95vh] rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
                   <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50">
                       <h3 className="font-bold text-slate-800 flex items-center gap-2"><Eye className="w-5 h-5 text-blue-600"/> {previewData.title}</h3>
                       <div className="flex gap-2">
-                        <button onClick={() => window.print()} className="p-2 hover:bg-slate-200 rounded text-slate-500"><Printer className="w-5 h-5"/></button>
+                        <button onClick={() => window.print()} className="p-2 hover:bg-blue-100 hover:text-blue-600 rounded text-slate-500 transition-colors flex items-center gap-1 text-sm font-medium"><Printer className="w-4 h-4"/> In PDF</button>
                         <button onClick={() => setPreviewData(null)} className="p-2 hover:bg-red-100 hover:text-red-600 rounded text-slate-500 transition-colors"><X className="w-5 h-5"/></button>
                       </div>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-6 md:p-10 bg-white custom-scrollbar printable-content">
-                      {previewData.type === 'markdown' && previewData.content && (
-                          <div className="markdown-body">
-                              <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex, rehypeRaw]}>
-                                  {previewData.content}
-                              </ReactMarkdown>
-                          </div>
-                      )}
-                      {previewData.type === 'matrix' && renderMatrixHTML()}
-                      {previewData.type === 'spec' && renderSpecHTML()}
+                  
+                  {/* PREVIEW CONTENT - SIMULATE PDF READER */}
+                  <div className="flex-1 overflow-y-auto bg-slate-200 p-8 custom-scrollbar flex justify-center printable-content">
+                      <div className={`a4-paper transform transition-transform origin-top ${isLandscapePreview ? 'landscape' : ''}`}>
+                        {previewData.type === 'markdown' && previewData.content && (
+                            <div className="markdown-body">
+                                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex, rehypeRaw]}>
+                                    {previewData.content}
+                                </ReactMarkdown>
+                            </div>
+                        )}
+                        {previewData.type === 'matrix' && renderMatrixHTML()}
+                        {previewData.type === 'spec' && renderSpecHTML()}
+                      </div>
                   </div>
               </div>
           </div>

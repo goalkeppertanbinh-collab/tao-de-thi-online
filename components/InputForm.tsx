@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useMemo, useEffect } from "react";
 import { TestParams, Topic, TestSetConfig, LevelCounts } from "../types";
 import { GRADES, DURATIONS } from "../constants";
@@ -6,7 +5,7 @@ import { CURRICULUM_DATA, CurriculumStandard } from "../data/curriculumData";
 import { extractTextFromFile } from "../utils/fileParser";
 import { parseMatrixFromText } from "../services/geminiService";
 import { 
-  Key, Eye, EyeOff, Files, Settings2, Trash2, Upload, FileText, Grid3X3, FileInput, Shuffle, CopyX, Plus, ListChecks, Calculator, MessageSquareText, Lightbulb, BookOpen, ChevronRight, X, FolderTree, PenLine, List, Loader2, Wand2, CheckCircle
+  Key, Files, Settings2, Trash2, Upload, FileText, Grid3X3, List, Loader2, Wand2, CheckCircle, PenLine, CopyX, Plus, Calculator, MessageSquareText, BookOpen, X, FolderTree, Shuffle, Lightbulb, ListChecks
 } from "lucide-react";
 
 interface InputFormProps {
@@ -25,7 +24,7 @@ const InputForm: React.FC<InputFormProps> = ({
   const [newParentTopic, setNewParentTopic] = useState(""); // State for Major Topic
   const [newTopicDescription, setNewTopicDescription] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [showApiKey, setShowApiKey] = useState(false);
+  // Removed showApiKey state
   const [matrixTab, setMatrixTab] = useState<"manual" | "file">("manual");
   const [inputMode, setInputMode] = useState<"select" | "text">("select"); // Toggle between Dropdown and Manual Text
   const [isAnalyzingFile, setIsAnalyzingFile] = useState(false);
@@ -382,11 +381,14 @@ const InputForm: React.FC<InputFormProps> = ({
                       <label className="text-xs font-bold text-slate-700 flex items-center gap-1"><Key className="w-3 h-3" /> API KEY</label>
                       <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-[10px] text-blue-500 hover:underline">Lấy key</a>
                   </div>
-                  <div className="relative">
-                      <input type={showApiKey ? "text" : "password"} value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="Nhập API Key..." className="w-full px-3 py-1.5 pr-8 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-100" />
-                      <button onClick={() => setShowApiKey(!showApiKey)} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400">
-                          {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
+                  <div>
+                      <input 
+                        type="password" 
+                        value={apiKey} 
+                        onChange={(e) => setApiKey(e.target.value)} 
+                        placeholder="Nhập API Key (được ẩn)" 
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-100" 
+                      />
                   </div>
               </div>
               

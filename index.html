@@ -13,7 +13,7 @@
     <style>
       body { font-family: 'Inter', sans-serif; }
       /* Custom scrollbar for better aesthetics */
-      ::-webkit-scrollbar { width: 8px; }
+      ::-webkit-scrollbar { width: 8px; height: 8px; }
       ::-webkit-scrollbar-track { background: #f1f1f1; }
       ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
       ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
@@ -33,14 +33,44 @@
       .icon-btn { @apply text-slate-600 hover:text-slate-800 hover:bg-slate-100 border border-slate-200; }
       .primary-btn, .secondary-btn, .icon-btn { @apply text-sm flex items-center gap-1.5 font-medium px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50; }
 
+      /* A4 Paper Simulation */
+      .a4-paper {
+        width: 210mm;
+        min-height: 297mm;
+        padding: 20mm;
+        margin: 0 auto;
+        background: white;
+        box-shadow: 0 0 15px rgba(0,0,0,0.15);
+        color: black;
+        box-sizing: border-box;
+      }
+
+      /* A4 Landscape Modifier */
+      .a4-paper.landscape {
+        width: 297mm;
+        min-height: 210mm;
+      }
+
       /* Print styles */
       @media print {
-        body { background: white; }
-        header, button { display: none !important; }
-        .print\:hidden { display: none !important; }
+        body { background: none; }
+        header, button, .print\:hidden { display: none !important; }
         .print\:w-full { width: 100% !important; max-width: none !important; }
         .markdown-body { font-size: 12pt; }
-        .printable-content { overflow: visible !important; height: auto !important; }
+        .printable-content { overflow: visible !important; height: auto !important; background: white !important; padding: 0 !important; }
+        /* Reset A4 styles for actual printing to avoid double margins */
+        .a4-paper { width: 100%; box-shadow: none; margin: 0; padding: 0; min-height: auto; }
+        .a4-paper.landscape { width: 100%; min-height: auto; }
+        
+        h1, h2, h3 { page-break-after: avoid; }
+        table { page-break-inside: auto; }
+        tr { page-break-inside: avoid; page-break-after: auto; }
+        
+        /* Attempt to force landscape in print dialog for specific pages is tricky in SPA, 
+           but we ensure width flows correctly. */
+        @page {
+           margin: 1cm;
+        }
       }
     </style>
   <script type="importmap">
