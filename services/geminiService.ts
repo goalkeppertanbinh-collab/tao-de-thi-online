@@ -7,11 +7,13 @@ const generateSystemInstruction = () => {
   return `Bạn là một chuyên gia giáo dục Toán học Việt Nam, chuyên soạn đề kiểm tra cho học sinh Trung học cơ sở (THCS) theo Chương trình Giáo dục Phổ thông 2018.
 Bám sát SGK "CHÂN TRỜI SÁNG TẠO".
 
-CẤU TRÚC ĐỀ THI:
-1. Phần I: Trắc nghiệm khách quan (Nhiều lựa chọn).
-2. Phần II: Trắc nghiệm Đúng/Sai. BẮT BUỘC: Mỗi câu hỏi phải có chính xác 4 ý tiểu dẫn (a, b, c, d).
-3. Phần III: Trắc nghiệm Trả lời ngắn.
-4. Phần IV: Tự luận.
+CẤU TRÚC ĐỀ THI (BẮT BUỘC DÙNG ĐÚNG ĐỊNH DẠNG TIÊU ĐỀ SAU):
+
+I. Trắc Nghiệm: (Tổng điểm phần trắc nghiệm)
+   Phần 1: ([Điểm] điểm) Câu trắc nghiệm nhiều phương án lựa chọn
+   Phần 2: ([Điểm] điểm) Câu trắc nghiệm đúng sai. BẮT BUỘC: Mỗi câu hỏi phải có chính xác 4 ý tiểu dẫn (a, b, c, d).
+   Phần 3: ([Điểm] điểm) Câu trắc nghiệm trả lời ngắn
+II. Tự Luận: ([Điểm] điểm)
 
 QUY ĐỊNH VỀ ĐỊNH DẠNG TOÁN HỌC (LATEX - CỰC KỲ QUAN TRỌNG):
 Tuyệt đối không lạm dụng dấu $. Hãy phân biệt rõ ràng giữa "Văn bản" và "Toán học".
@@ -19,15 +21,16 @@ Tuyệt đối không lạm dụng dấu $. Hãy phân biệt rõ ràng giữa "
 2. KHÔNG sử dụng dấu $ cho văn bản tiếng Việt hoặc số đếm bài (Câu 1).
 3. LỖI CẦN TRÁNH: Dùng $\\sqrt{x}$, $\\frac{a}{b}$, $\\Delta ABC$, $\\widehat{A}$, $90^\\circ$ (không dùng $90^o$).
 
-QUY ĐỊNH ĐỊNH DẠNG HIỂN THỊ ĐỀ BÀI:
+QUY ĐỊNH ĐỊNH DẠNG HIỂN THỊ CÂU HỎI:
 - Tiêu đề câu hỏi phải có điểm số: **Câu [N] ([Điểm] điểm):** [Nội dung]
 
 ---
 
-QUY ĐỊNH VỀ "ĐÁP ÁN VÀ HƯỚNG DẪN CHẤM" (QUAN TRỌNG - PHẢI GIỐNG MẪU):
+QUY ĐỊNH VỀ "ĐÁP ÁN VÀ HƯỚNG DẪN CHẤM" (QUAN TRỌNG - TIÊU ĐỀ PHẢI GIỐNG HỆT ĐỀ THI):
 Tuyệt đối KHÔNG chép lại đề bài vào phần này. Chỉ lập bảng kết quả.
+Các mục lớn (I, II) và các Phần (1, 2, 3) phải giữ nguyên tên gọi như Đề thi.
 
-A. MẪU BẢNG CHO PHẦN I (TRẮC NGHIỆM) VÀ III (TRẢ LỜI NGẮN):
+A. MẪU BẢNG CHO PHẦN 1 (TRẮC NGHIỆM) VÀ PHẦN 3 (TRẢ LỜI NGẮN):
 Tạo bảng có cột "Câu", các cột "Mã Đề ...", và cột "Điểm".
 Ví dụ:
 | Câu | Mã Đề [Code1] | Mã Đề [Code2] | Điểm |
@@ -37,14 +40,14 @@ Ví dụ:
 | ... | ... | ... | ... |
 *Lưu ý: Bảng đáp án phải tương ứng đúng với nội dung câu hỏi ở vị trí đó trong từng mã đề.*
 
-B. MẪU BẢNG CHO PHẦN II (ĐÚNG/SAI):
+B. MẪU BẢNG CHO PHẦN 2 (ĐÚNG/SAI):
 Ghi rõ từng ý a, b, c, d là Đ hay S.
 Ví dụ:
 | Câu | Mã Đề [Code1] | Mã Đề [Code2] | Điểm |
 |---|---|---|---|
 | 13 | a-Đ, b-S, c-Đ, d-S | a-S, b-Đ, c-S, d-Đ | 1,0 |
 
-C. MẪU BẢNG CHO PHẦN IV (TỰ LUẬN) - YÊU CẦU CHI TIẾT:
+C. MẪU BẢNG CHO PHẦN TỰ LUẬN - YÊU CẦU CHI TIẾT:
 Cấu trúc bảng gồm 3 cột: | Câu | Nội dung | Điểm |
 - Cột "Nội dung": Trình bày các bước giải chi tiết. Dùng thẻ <br> để xuống dòng giữa các bước.
 - Cột "Điểm": Ghi điểm tổng cho câu đó (in đậm).
@@ -69,12 +72,12 @@ VÍ DỤ MẪU TỰ LUẬN (Làm y hệt mẫu này):
 QUY TRÌNH TẠO ĐỀ VÀ TRỘN ĐỀ:
 1. Soạn thảo Mã đề Gốc trước.
 2. Tạo các Mã đề Trộn dựa trên Mã Gốc:
-   - Phần Tự luận (IV): GIỮ NGUYÊN thứ tự và nội dung.
-   - Phần Trắc nghiệm (I, II, III): BẮT BUỘC PHẢI THỰC HIỆN 2 VIỆC:
+   - Phần Tự luận (II): GIỮ NGUYÊN thứ tự và nội dung.
+   - Phần Trắc nghiệm (I): BẮT BUỘC PHẢI THỰC HIỆN 2 VIỆC:
      + Việc 1: HOÁN VỊ THỨ TỰ CÂU HỎI (Ví dụ: Câu 1 ở đề gốc đảo xuống thành câu 5 ở đề trộn).
      + Việc 2: HOÁN VỊ THỨ TỰ ĐÁP ÁN (A, B, C, D) trong từng câu.
 
-CẤU TRÚC OUTPUT:
+CẤU TRÚC OUTPUT (TUÂN THỦ NGHIÊM NGẶT TÊN TIÊU ĐỀ):
 ## BỘ ĐỀ SỐ [N] (Các mã: [Danh sách mã])
 
 ### ĐỀ KIỂM TRA MÃ [Mã Gốc]
@@ -85,16 +88,18 @@ CẤU TRÚC OUTPUT:
 ---
 ### ĐÁP ÁN VÀ HƯỚNG DẪN CHẤM (BỘ [N])
 
-#### I. Trắc nghiệm:
+**I. Trắc Nghiệm**
+
+**Phần 1: Câu trắc nghiệm nhiều phương án lựa chọn**
 (Bảng đáp án so sánh các mã đề)
 
-#### II. Trắc nghiệm đúng sai:
+**Phần 2: Câu trắc nghiệm đúng sai**
 (Bảng đáp án so sánh các mã đề)
 
-#### III. Trả lời ngắn:
+**Phần 3: Câu trắc nghiệm trả lời ngắn**
 (Bảng đáp án so sánh các mã đề)
 
-#### IV. Tự luận:
+**II. Tự Luận**
 (Bảng 3 cột: Câu | Nội dung | Điểm - dùng thẻ <br> để ngắt dòng bước giải)
 
 ## NGÂN HÀNG CÂU HỎI
@@ -120,19 +125,19 @@ const formatTopicMatrix = (topics: Topic[]) => {
     
     const mcTotal = sumLevels(t.matrix.multipleChoice);
     if (mcTotal > 0) {
-      matrixStr += `  + Trắc nghiệm: ${mcTotal} câu (${t.matrix.multipleChoice.recognition || 0} NB, ${t.matrix.multipleChoice.comprehension || 0} TH, ${t.matrix.multipleChoice.application || 0} VD)\n`;
+      matrixStr += `  + Phần 1 (TN nhiều lựa chọn): ${mcTotal} câu (${t.matrix.multipleChoice.recognition || 0} NB, ${t.matrix.multipleChoice.comprehension || 0} TH, ${t.matrix.multipleChoice.application || 0} VD)\n`;
       globalTotals.mc += mcTotal;
     }
 
     const tfTotal = sumLevels(t.matrix.trueFalse);
     if (tfTotal > 0) {
-      matrixStr += `  + Đúng/Sai: ${tfTotal} câu (${t.matrix.trueFalse.recognition || 0} NB, ${t.matrix.trueFalse.comprehension || 0} TH, ${t.matrix.trueFalse.application || 0} VD)\n`;
+      matrixStr += `  + Phần 2 (TN Đúng/Sai): ${tfTotal} câu (${t.matrix.trueFalse.recognition || 0} NB, ${t.matrix.trueFalse.comprehension || 0} TH, ${t.matrix.trueFalse.application || 0} VD)\n`;
       globalTotals.tf += tfTotal;
     }
 
     const saTotal = sumLevels(t.matrix.shortAnswer);
     if (saTotal > 0) {
-      matrixStr += `  + Trả lời ngắn: ${saTotal} câu (${t.matrix.shortAnswer.recognition || 0} NB, ${t.matrix.shortAnswer.comprehension || 0} TH, ${t.matrix.shortAnswer.application || 0} VD)\n`;
+      matrixStr += `  + Phần 3 (TN Trả lời ngắn): ${saTotal} câu (${t.matrix.shortAnswer.recognition || 0} NB, ${t.matrix.shortAnswer.comprehension || 0} TH, ${t.matrix.shortAnswer.application || 0} VD)\n`;
       globalTotals.sa += saTotal;
     }
 
@@ -171,8 +176,8 @@ BỘ ĐỀ SỐ ${index + 1}:
 1. MÃ ĐỀ GỐC: ${sourceCode}
 2. CÁC MÃ ĐỀ TRỘN: ${derivedCodes.join(", ")}
    - QUY TẮC TRỘN ĐỀ (NGHIÊM NGẶT):
-     + Phần Tự luận (IV): GIỮ NGUYÊN thứ tự và nội dung.
-     + Phần Trắc nghiệm (I, II, III):
+     + Phần Tự luận (II): GIỮ NGUYÊN thứ tự và nội dung.
+     + Phần Trắc nghiệm (I):
        1. HOÁN VỊ THỨ TỰ CÂU HỎI: Đảo lộn vị trí các câu hỏi trong cùng một phần (Ví dụ: Câu 1 đề gốc -> Câu 5 đề trộn).
        2. HOÁN VỊ ĐÁP ÁN: Đảo lộn vị trí các lựa chọn A, B, C, D.
 3. YÊU CẦU HƯỚNG DẪN CHẤM:
@@ -194,12 +199,12 @@ BỘ ĐỀ SỐ ${index + 1}:
     const { matrixStr, globalTotals } = formatTopicMatrix(topics);
     contentInstruction = `MA TRẬN:\n${matrixStr}\n
 QUY ĐỊNH CẤU TRÚC VÀ ĐIỂM SỐ:
-- Tổng số câu: ${globalTotals.mc} TN, ${globalTotals.tf} Đ/S, ${globalTotals.sa} TLN, ${globalTotals.es} TL.
+- Tổng số câu: ${globalTotals.mc} (Phần 1), ${globalTotals.tf} (Phần 2), ${globalTotals.sa} (Phần 3), ${globalTotals.es} (Tự luận).
 - Điểm chi tiết:
-  + Trắc nghiệm (I): ${pointValues.multipleChoice} điểm/câu.
-  + Đúng/Sai (II): ${pointValues.trueFalse} điểm/câu.
-  + Trả lời ngắn (III): ${pointValues.shortAnswer} điểm/câu.
-  + Tự luận (IV): ${pointValues.essay} điểm/câu.`;
+  + Phần 1 (TN nhiều lựa chọn): ${pointValues.multipleChoice} điểm/câu.
+  + Phần 2 (TN Đúng/Sai): ${pointValues.trueFalse} điểm/câu.
+  + Phần 3 (TN Trả lời ngắn): ${pointValues.shortAnswer} điểm/câu.
+  + Tự luận: ${pointValues.essay} điểm/câu.`;
   }
 
   let finalPrompt = `Hãy soạn đề kiểm tra Toán ${grade} (${duration}) bám sát SGK CHÂN TRỜI SÁNG TẠO.
