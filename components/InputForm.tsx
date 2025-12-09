@@ -1,11 +1,12 @@
+
 import React, { useState, useRef, useMemo, useEffect } from "react";
-import { TestParams, Topic, TestSetConfig, LevelCounts } from "../types";
-import { GRADES, DURATIONS } from "../constants";
+import { TestParams, Topic, TestSetConfig, LevelCounts, HeaderData } from "../types";
+import { GRADES, DURATIONS, SUBJECTS, EXAM_TERMS } from "../constants";
 import { CURRICULUM_DATA, CurriculumStandard } from "../data/curriculumData";
 import { extractTextFromFile } from "../utils/fileParser";
 import { parseMatrixFromText } from "../services/geminiService";
 import { 
-  Key, Files, Settings2, Trash2, Upload, FileText, Grid3X3, List, Loader2, Wand2, CheckCircle, PenLine, CopyX, Plus, Calculator, MessageSquareText, BookOpen, X, FolderTree, Shuffle, Lightbulb, ListChecks
+  Key, Files, Settings2, Trash2, Upload, FileText, Grid3X3, List, Loader2, Wand2, CheckCircle, PenLine, CopyX, Plus, Calculator, MessageSquareText, BookOpen, X, FolderTree, Shuffle, Lightbulb, ListChecks, LayoutTemplate, ClipboardPaste, Save, GraduationCap, CalendarClock
 } from "lucide-react";
 
 interface InputFormProps {
@@ -24,11 +25,11 @@ const InputForm: React.FC<InputFormProps> = ({
   const [newParentTopic, setNewParentTopic] = useState(""); // State for Major Topic
   const [newTopicDescription, setNewTopicDescription] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
-  // Removed showApiKey state
-  const [matrixTab, setMatrixTab] = useState<"manual" | "file">("manual");
+  const [matrixTab, setMatrixTab] = useState<"manual" | "file" | "headers">("manual");
   const [inputMode, setInputMode] = useState<"select" | "text">("select"); // Toggle between Dropdown and Manual Text
   const [isAnalyzingFile, setIsAnalyzingFile] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null); // New state for selected file
+  const [rawHeaderText, setRawHeaderText] = useState(""); // State for raw header text input
   
   // Suggestions State
   const [selectedStandard, setSelectedStandard] = useState<CurriculumStandard | null>(null);
@@ -37,6 +38,7 @@ const InputForm: React.FC<InputFormProps> = ({
   const [matrixInput, setMatrixInput] = useState<string[][]>(Array(4).fill(null).map(() => Array(3).fill("")));
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const headerFileInputRef = useRef<HTMLInputElement>(null);
 
   // --- DERIVED DATA FOR DROPDOWNS ---
   const gradeData = useMemo(() => 
@@ -149,7 +151,7 @@ const InputForm: React.FC<InputFormProps> = ({
       saCount += sumL(t.matrix.shortAnswer);
       esCount += sumL(t.matrix.essay);
 
-      // Score Breakdown
+      // Score Breakdown (Knowledge Level)
       // Recognition (Biết)
       scoreRec += (t.matrix.multipleChoice.recognition * pMC) +
                   (t.matrix.trueFalse.recognition * pTF) +
@@ -171,7 +173,13 @@ const InputForm: React.FC<InputFormProps> = ({
 
     const score = scoreRec + scoreComp + scoreApp;
 
-    return { score, mcCount, tfCount, saCount, esCount, scoreRec, scoreComp, scoreApp };
+    // Score Breakdown (Section Type)
+    const scoreMC = mcCount * pMC;
+    const scoreTF = tfCount * pTF;
+    const scoreSA = saCount * pSA;
+    const scoreES = esCount * pES;
+
+    return { score, mcCount, tfCount, saCount, esCount, scoreRec, scoreComp, scoreApp, scoreMC, scoreTF, scoreSA, scoreES };
   }, [params.topics, params.pointValues]);
 
   // --- SET LOGIC ---
@@ -323,6 +331,89 @@ const InputForm: React.FC<InputFormProps> = ({
       }
   };
 
+  // --- HEADER TEXT HANDLING ---
+  const handleHeaderFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files && e.target.files[0]) {
+          const file = e.target.files[0];
+          try {
+              const text = await extractTextFromFile(file);
+              setRawHeaderText(text);
+              alert("Đã tải nội dung file vào ô soạn thảo. Vui lòng kiểm tra và bấm 'Phân tích & Lưu'.");
+          } catch (err: any) {
+              alert("Lỗi đọc file: " + err.message);
+          } finally {
+              if (headerFileInputRef.current) headerFileInputRef.current.value = "";
+          }
+      }
+  };
+
+  const handleProcessHeaderText = () => {
+    if (!rawHeaderText || !rawHeaderText.trim()) {
+        alert("Vui lòng dán nội dung vào ô trống.");
+        return;
+    }
+
+    try {
+        const text = rawHeaderText;
+        
+        // Split text by tags
+        const newHeaders: HeaderData = { ...params.headerData };
+        
+        // Define tags and map to keys
+        const mappings: {tag: string, key: keyof HeaderData}[] = [
+            {tag: "\\[MA TRẬN\\]", key: "matrix"},
+            {tag: "\\[ĐẶC TẢ\\]", key: "spec"},
+            {tag: "\\[NGÂN HÀNG\\]", key: "bank"},
+            {tag: "\\[ĐỀ THI\\]", key: "exam"},
+            {tag: "\\[HƯỚNG DẪN CHẤM\\]", key: "hdc"}
+        ];
+        
+        // Check for explicit tags
+        const hasTags = mappings.some(m => new RegExp(m.tag, 'i').test(text));
+        
+        if (!hasTags) {
+             // If no tags, assume it is for the Exam Header by default as a fallback
+             setParams(p => ({ ...p, headerData: { ...p.headerData, exam: text } }));
+             alert("Không tìm thấy thẻ phân loại (ví dụ [ĐỀ THI]).\nToàn bộ nội dung đã được lưu vào 'Tiêu đề Đề Thi'.");
+        } else {
+             // Parse logic using internal tags
+             let currentKey: keyof HeaderData | null = null;
+             let buffer = "";
+
+             const lines = text.split('\n');
+             for(const line of lines) {
+                 const matchedMapping = mappings.find(m => new RegExp(m.tag, 'i').test(line));
+                 
+                 if (matchedMapping) {
+                     // Save previous buffer
+                     if (currentKey) {
+                         newHeaders[currentKey] = buffer.trim();
+                     }
+                     // Start new section
+                     currentKey = matchedMapping.key;
+                     buffer = "";
+                 } else {
+                     if (currentKey) {
+                         buffer += line + "\n";
+                     }
+                 }
+             }
+             // Save last buffer
+             if (currentKey) {
+                 newHeaders[currentKey] = buffer.trim();
+             }
+             
+             setParams(p => ({ ...p, headerData: newHeaders }));
+             alert("Đã cập nhật/ghi đè các tiêu đề thành công!");
+             setRawHeaderText(""); // Clear input after success
+        }
+
+    } catch (e) {
+        alert("Lỗi xử lý nội dung.");
+    }
+  };
+
+
   const renderMatrixRow = (label: string, rowIdx: number, pointKey: keyof typeof params.pointValues) => {
     // Helper to identify if a level is suggested in the selected standard
     const getLevelClass = (colIndex: number) => {
@@ -381,27 +472,39 @@ const InputForm: React.FC<InputFormProps> = ({
                       <label className="text-xs font-bold text-slate-700 flex items-center gap-1"><Key className="w-3 h-3" /> API KEY</label>
                       <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-[10px] text-blue-500 hover:underline">Lấy key</a>
                   </div>
-                  <div>
+                  <div className="relative">
                       <input 
-                        type="password" 
+                        type="password"
                         value={apiKey} 
                         onChange={(e) => setApiKey(e.target.value)} 
-                        placeholder="Nhập API Key (được ẩn)" 
-                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-100" 
+                        placeholder="Nhập API Key (tự động mã hóa khi lưu)" 
+                        className="w-full pl-3 pr-10 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-100" 
                       />
                   </div>
               </div>
               
-              {/* Grade & Duration */}
+              {/* Grade, Subject, Term & Duration */}
               <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 grid grid-cols-2 gap-3">
-                  <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Khối lớp</label>
+                  <div className="col-span-1">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1 flex items-center gap-1"><GraduationCap className="w-3 h-3"/> Khối lớp</label>
                       <select value={params.grade} onChange={(e) => setParams(p => ({...p, grade: e.target.value}))} className="w-full text-sm border-slate-200 rounded-md bg-slate-50">
                           {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
                       </select>
                   </div>
-                  <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Thời gian</label>
+                   <div className="col-span-1">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1 flex items-center gap-1"><BookOpen className="w-3 h-3"/> Môn học</label>
+                      <select value={params.subject} onChange={(e) => setParams(p => ({...p, subject: e.target.value}))} className="w-full text-sm border-slate-200 rounded-md bg-slate-50">
+                          {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                  </div>
+                   <div className="col-span-1">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1 flex items-center gap-1"><CalendarClock className="w-3 h-3"/> Kì thi</label>
+                      <select value={params.examTerm} onChange={(e) => setParams(p => ({...p, examTerm: e.target.value}))} className="w-full text-sm border-slate-200 rounded-md bg-slate-50">
+                          {EXAM_TERMS.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                  </div>
+                  <div className="col-span-1">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1 flex items-center gap-1"><Files className="w-3 h-3"/> Thời gian</label>
                       <select value={params.duration} onChange={(e) => setParams(p => ({...p, duration: e.target.value}))} className="w-full text-sm border-slate-200 rounded-md bg-slate-50">
                           {DURATIONS.map(d => <option key={d} value={d}>{d}</option>)}
                       </select>
@@ -487,10 +590,93 @@ const InputForm: React.FC<InputFormProps> = ({
               >
                   <Wand2 className="w-4 h-4" /> Nhập từ File AI
               </button>
+              <button 
+                  onClick={() => setMatrixTab("headers")} 
+                  className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 ${matrixTab === "headers" ? "text-orange-600 border-b-2 border-orange-600 bg-orange-50" : "text-slate-500 hover:bg-slate-50"}`}
+              >
+                  <LayoutTemplate className="w-4 h-4" /> Cấu hình Tiêu đề
+              </button>
           </div>
 
           <div className="p-4 lg:p-6">
-              {matrixTab === "file" ? (
+              {matrixTab === "headers" ? (
+                  <div className="space-y-6">
+                      <div className="bg-orange-50 border border-orange-100 p-4 rounded-xl">
+                          <h4 className="font-bold text-orange-900 mb-2 flex items-center gap-2">
+                              <ClipboardPaste className="w-4 h-4" /> Tự động điền & Dán nội dung
+                          </h4>
+                          <div className="bg-white/60 p-3 rounded-lg border border-orange-100 mb-3 text-xs text-orange-800 space-y-2">
+                              <p className="font-bold">Hệ thống hỗ trợ các từ khóa động (Placeholder) sau:</p>
+                              <ul className="list-disc pl-5 space-y-1">
+                                  <li><code>[KÌ THI]</code>: Thay bằng tên kì thi (VD: {params.examTerm})</li>
+                                  <li><code>[Môn học]</code>: Thay bằng tên môn (VD: {params.subject})</li>
+                                  <li><code>[Khối lớp]</code>: Thay bằng khối lớp (VD: {params.grade})</li>
+                                  <li><code>[thời gian]</code>: Thay bằng thời gian làm bài (VD: {params.duration})</li>
+                                  <li><code>[mã đề 1]</code>, <code>[mã đề 2]</code>...: Thay bằng mã đề cụ thể của từng bộ khi xuất file.</li>
+                              </ul>
+                              <p className="italic">Ví dụ tiêu đề: "Môn: [Môn học] - Mã đề: [mã đề 1]" sẽ thành "Môn: Toán - Mã đề: 901".</p>
+                          </div>
+
+                          <div className="flex gap-3 mb-3">
+                              <input 
+                                type="file" 
+                                accept=".docx,.doc" 
+                                ref={headerFileInputRef} 
+                                onChange={handleHeaderFileSelect} 
+                                className="hidden" 
+                              />
+                              <button 
+                                onClick={() => headerFileInputRef.current?.click()}
+                                className="px-4 py-2 bg-white border border-orange-300 text-orange-700 text-xs font-bold rounded-lg hover:bg-orange-50 flex items-center gap-2"
+                              >
+                                <Upload className="w-3 h-3" /> Tải mẫu tiêu đề (.docx)
+                              </button>
+                          </div>
+
+                          <p className="text-xs text-slate-500 mb-2">
+                              Dán nội dung hoặc tải file vào ô bên dưới. Dùng thẻ để phân loại nội dung cho từng phần:
+                              <br/> <b>[MA TRẬN]</b>, <b>[ĐẶC TẢ]</b>, <b>[NGÂN HÀNG]</b>, <b>[ĐỀ THI]</b>, <b>[HƯỚNG DẪN CHẤM]</b>.
+                              <br/> 
+                              <span className="text-red-600 font-bold">MẸO QUAN TRỌNG:</span> Để chia tiêu đề thành 2 cột (trái - phải), hãy dùng ký tự <code>||</code>. 
+                          </p>
+                          <div className="space-y-3">
+                              <textarea 
+                                  value={rawHeaderText}
+                                  onChange={(e) => setRawHeaderText(e.target.value)}
+                                  placeholder={`Ví dụ:\n[ĐỀ THI]\nSỞ GD&ĐT... || KIỂM TRA [KÌ THI]\nTRƯỜNG THCS... || MÔN: [Môn học] [Khối lớp]\n\n[HƯỚNG DẪN CHẤM]\nPHÒNG GD... || HƯỚNG DẪN CHẤM`}
+                                  className="w-full px-3 py-2 border border-orange-200 rounded text-sm focus:ring-2 focus:ring-orange-200 h-32 resize-y font-mono bg-white"
+                              />
+                              <button 
+                                  onClick={handleProcessHeaderText}
+                                  disabled={!rawHeaderText.trim()}
+                                  className="px-4 py-2 bg-orange-600 text-white text-xs font-bold rounded-lg hover:bg-orange-700 disabled:opacity-50 flex items-center gap-2"
+                              >
+                                  <Save className="w-3 h-3" /> Phân tích & Lưu (Ghi đè)
+                              </button>
+                          </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {[
+                              { key: 'matrix', label: 'Tiêu đề Bảng Ma Trận' },
+                              { key: 'spec', label: 'Tiêu đề Bảng Đặc Tả' },
+                              { key: 'bank', label: 'Tiêu đề Ngân Hàng Câu Hỏi' },
+                              { key: 'exam', label: 'Tiêu đề Đề Thi (chung cho các mã)' },
+                              { key: 'hdc', label: 'Tiêu đề Hướng Dẫn Chấm' }
+                          ].map((item) => (
+                              <div key={item.key} className={item.key === 'exam' ? 'md:col-span-2' : ''}>
+                                  <label className="block text-xs font-bold text-slate-600 mb-1">{item.label}</label>
+                                  <textarea 
+                                      value={(params.headerData as any)[item.key]}
+                                      onChange={(e) => setParams(p => ({...p, headerData: { ...p.headerData, [item.key]: e.target.value }}))}
+                                      placeholder={`Nhập nội dung tiêu đề... Dùng || để chia cột trái phải.`}
+                                      className="w-full px-3 py-2 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-orange-200 h-24 resize-y font-serif"
+                                  />
+                              </div>
+                          ))}
+                      </div>
+                  </div>
+              ) : matrixTab === "file" ? (
                   <div className="flex flex-col items-center justify-center text-center space-y-4 py-8">
                       {isAnalyzingFile ? (
                           <div className="flex flex-col items-center text-green-600 animate-pulse">
@@ -669,140 +855,158 @@ const InputForm: React.FC<InputFormProps> = ({
                                 </div>
                               )}
 
-                              <div className="mb-4 relative">
+                              <div>
+                                  <label className="block text-[10px] text-slate-500 font-bold mb-1">Yêu cầu cần đạt / Ghi chú cho AI</label>
                                   <textarea 
-                                    value={newTopicDescription}
-                                    onChange={(e) => setNewTopicDescription(e.target.value)}
-                                    placeholder="Gợi ý chi tiết (Tùy chọn). Chọn từ gợi ý trên hoặc tự nhập..."
-                                    className="w-full px-3 py-2 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-200 h-20 resize-none"
+                                      value={newTopicDescription} 
+                                      onChange={(e) => setNewTopicDescription(e.target.value)}
+                                      placeholder="Mô tả chi tiết những gì học sinh cần nắm được (AI sẽ dựa vào đây để ra đề sát hơn)..."
+                                      className="w-full px-3 py-2 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-200 h-20 resize-none"
                                   />
-                                  <div className="absolute right-2 bottom-2 text-[10px] text-slate-400 pointer-events-none">
-                                      <BookOpen className="w-3 h-3 inline mr-1" />
-                                      {newTopicDescription.length} chars
-                                  </div>
                               </div>
 
-                              <div className="grid grid-cols-6 gap-2 mb-2 text-[10px] font-bold uppercase text-slate-400 text-center">
-                                  <div className="col-span-2 text-left pl-2">Loại câu hỏi</div>
-                                  <div className="col-span-1">Điểm/Câu</div>
-                                  <div>Biết</div>
-                                  <div>Hiểu</div>
-                                  <div>Vận dụng</div>
+                              <div className="mt-3 space-y-2">
+                                  {renderMatrixRow("Trắc nghiệm (TN)", 0, 'multipleChoice')}
+                                  {renderMatrixRow("Đúng/Sai (Đ/S)", 1, 'trueFalse')}
+                                  {renderMatrixRow("Trả lời ngắn (TLN)", 2, 'shortAnswer')}
+                                  {renderMatrixRow("Tự luận (TL)", 3, 'essay')}
                               </div>
 
-                              <div className="space-y-1">
-                                  {renderMatrixRow("Trắc nghiệm", 0, "multipleChoice")}
-                                  {renderMatrixRow("Đúng / Sai", 1, "trueFalse")}
-                                  {renderMatrixRow("Trả lời ngắn", 2, "shortAnswer")}
-                                  {renderMatrixRow("Tự luận", 3, "essay")}
-                              </div>
-
-                              <div className="mt-4 flex gap-2 justify-end">
-                                  {editingId && <button onClick={() => {setEditingId(null); setNewTopicName(""); setNewParentTopic(""); setNewTopicDescription("");}} className="px-4 py-2 bg-white border border-slate-300 rounded text-xs font-bold text-slate-600">Hủy</button>}
-                                  <button onClick={handleSaveTopic} disabled={!newTopicName} className="px-4 py-2 bg-blue-600 text-white rounded text-xs font-bold hover:bg-blue-700 flex items-center gap-1">
-                                      {editingId ? "Lưu thay đổi" : <><Plus className="w-3 h-3" /> Thêm vào danh sách</>}
+                              <div className="flex gap-2 mt-4">
+                                  {editingId && (
+                                    <button 
+                                      onClick={() => {
+                                        setEditingId(null);
+                                        setNewTopicName("");
+                                        // setNewParentTopic(""); 
+                                        setNewTopicDescription("");
+                                        setSelectedStandard(null);
+                                        setMatrixInput(Array(4).fill(null).map(() => Array(3).fill("")));
+                                      }}
+                                      className="flex-1 py-2 border border-slate-300 rounded text-slate-600 text-xs font-bold hover:bg-slate-50"
+                                    >
+                                      Hủy
+                                    </button>
+                                  )}
+                                  <button 
+                                      onClick={handleSaveTopic}
+                                      disabled={!newTopicName}
+                                      className="flex-[2] py-2 bg-blue-600 text-white rounded text-xs font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                                  >
+                                      {editingId ? <><Save className="w-3 h-3"/> Cập nhật</> : <><Plus className="w-3 h-3"/> Thêm chủ đề</>}
                                   </button>
-                              </div>
-                          </div>
-
-                          {/* CALCULATOR */}
-                          <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200 text-yellow-900 shadow-sm">
-                              <h4 className="text-xs font-bold uppercase mb-3 flex items-center gap-2 border-b border-yellow-200 pb-2"><Calculator className="w-4 h-4" /> Tổng điểm dự kiến</h4>
-                              
-                              <div className="grid grid-cols-2 gap-4 mb-3">
-                                  <div className="text-xs space-y-1.5">
-                                      <div className="flex justify-between"><span>Số câu TN:</span> <b>{totalScore.mcCount}</b></div>
-                                      <div className="flex justify-between"><span>Số câu Đ/S:</span> <b>{totalScore.tfCount}</b></div>
-                                      <div className="flex justify-between"><span>Số câu TLN:</span> <b>{totalScore.saCount}</b></div>
-                                      <div className="flex justify-between"><span>Số câu TL:</span> <b>{totalScore.esCount}</b></div>
-                                  </div>
-                                  <div className="text-right flex flex-col justify-end">
-                                      <div className="text-4xl font-bold text-yellow-600 leading-none">{totalScore.score.toFixed(2)}</div>
-                                      <div className="text-[10px] font-medium opacity-75 mt-1">trên thang điểm 10</div>
-                                  </div>
-                              </div>
-
-                              {/* Breakdown by Cognitive Level */}
-                              <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-yellow-200">
-                                  <div className="bg-white/50 rounded p-1.5">
-                                      <div className="text-[10px] font-bold text-slate-500 uppercase mb-0.5">Biết</div>
-                                      <div className="text-sm font-bold text-yellow-700">{totalScore.scoreRec.toFixed(2)}đ</div>
-                                  </div>
-                                  <div className="bg-white/50 rounded p-1.5">
-                                      <div className="text-[10px] font-bold text-slate-500 uppercase mb-0.5">Hiểu</div>
-                                      <div className="text-sm font-bold text-yellow-700">{totalScore.scoreComp.toFixed(2)}đ</div>
-                                  </div>
-                                  <div className="bg-white/50 rounded p-1.5">
-                                      <div className="text-[10px] font-bold text-slate-500 uppercase mb-0.5">Vận dụng</div>
-                                      <div className="text-sm font-bold text-yellow-700">{totalScore.scoreApp.toFixed(2)}đ</div>
-                                  </div>
                               </div>
                           </div>
                       </div>
 
-                      {/* LIST SECTION - Condensed to 3 columns on extra large screens (Was 4) */}
-                      <div className="xl:col-span-3 lg:col-span-5">
-                          <h4 className="font-bold text-slate-700 mb-3 flex items-center gap-2"><ListChecks className="w-4 h-4" /> Danh sách Chủ đề đã thêm</h4>
-                          <div className="space-y-2 max-h-[400px] lg:max-h-[600px] overflow-y-auto custom-scrollbar">
-                              {params.topics.length === 0 ? (
-                                  <div className="text-center py-12 text-slate-400 text-sm bg-slate-50 rounded-lg border border-dashed border-slate-200">
-                                      Chưa có chủ đề nào. Hãy nhập thông tin và nhấn "Thêm vào danh sách".
-                                  </div>
-                              ) : (
-                                  params.topics.map((t, idx) => (
-                                      <div key={t.id} className="bg-white p-3 rounded-lg border border-slate-200 flex flex-col gap-2 shadow-sm hover:border-blue-300 transition-colors">
-                                          <div className="flex items-center justify-between">
-                                              <div className="flex items-center gap-3">
-                                                  <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500">{idx + 1}</div>
+                      {/* LIST SECTION - Expanded to 3 columns on extra large screens (Was 4) */}
+                      <div className="xl:col-span-3 lg:col-span-5 flex flex-col h-full min-h-[400px]">
+                          <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
+                              <div className="p-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                                  <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2">
+                                      <ListChecks className="w-4 h-4 text-blue-600"/> Danh sách ({params.topics.length})
+                                  </h4>
+                                  {params.topics.length > 0 && (
+                                    <button 
+                                      onClick={() => {if(window.confirm("Xóa tất cả chủ đề?")) setParams(p => ({...p, topics: []}))}}
+                                      className="text-[10px] text-red-500 hover:bg-red-50 px-2 py-1 rounded transition-colors"
+                                    >
+                                      Xóa hết
+                                    </button>
+                                  )}
+                              </div>
+                              
+                              <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-2 bg-slate-100">
+                                  {params.topics.length === 0 ? (
+                                      <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-2 opacity-60">
+                                          <FolderTree className="w-10 h-10" />
+                                          <p className="text-xs text-center px-4">Chưa có chủ đề nào.<br/>Hãy thêm thủ công hoặc nhập từ file.</p>
+                                      </div>
+                                  ) : (
+                                      params.topics.map((t, idx) => {
+                                        const totalQ = 
+                                          (t.matrix.multipleChoice.recognition + t.matrix.multipleChoice.comprehension + t.matrix.multipleChoice.application) +
+                                          (t.matrix.trueFalse.recognition + t.matrix.trueFalse.comprehension + t.matrix.trueFalse.application) +
+                                          (t.matrix.shortAnswer.recognition + t.matrix.shortAnswer.comprehension + t.matrix.shortAnswer.application) +
+                                          (t.matrix.essay.recognition + t.matrix.essay.comprehension + t.matrix.essay.application);
+                                        
+                                        return (
+                                          <div key={t.id} className="bg-white p-2.5 rounded border border-slate-200 shadow-sm hover:shadow-md transition-shadow group">
+                                              <div className="flex justify-between items-start mb-1">
                                                   <div>
-                                                      <div className="text-xs font-semibold text-slate-500 flex items-center gap-1">
-                                                          <FolderTree className="w-3 h-3"/> {t.parentName || "Chương ..."}
-                                                      </div>
-                                                      <div className="font-bold text-sm text-slate-800 line-clamp-2">{t.name}</div>
+                                                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t.parentName}</span>
+                                                      <h5 className="font-bold text-slate-800 text-xs line-clamp-2 leading-snug" title={t.name}>{t.name}</h5>
+                                                  </div>
+                                                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                      <button onClick={() => handleEditTopic(t)} className="p-1 hover:bg-blue-50 text-blue-600 rounded"><Settings2 className="w-3 h-3"/></button>
+                                                      <button onClick={() => setParams(p => ({...p, topics: p.topics.filter(x => x.id !== t.id)}))} className="p-1 hover:bg-red-50 text-red-600 rounded"><Trash2 className="w-3 h-3"/></button>
                                                   </div>
                                               </div>
-                                              <div className="flex gap-1">
-                                                  <button onClick={() => handleEditTopic(t)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"><Settings2 className="w-4 h-4" /></button>
-                                                  <button onClick={() => setParams(p => ({...p, topics: p.topics.filter(x => x.id !== t.id)}))} className="p-1.5 text-red-600 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4" /></button>
+                                              <div className="flex items-center gap-2 mt-2">
+                                                  <div className="px-1.5 py-0.5 bg-slate-100 rounded text-[10px] font-bold text-slate-600 border border-slate-200">
+                                                      {totalQ} câu
+                                                  </div>
+                                                  {t.description && <div className="text-[10px] text-slate-400 truncate flex-1" title={t.description}>{t.description}</div>}
                                               </div>
                                           </div>
-                                          
-                                          {t.description && (
-                                            <div className="ml-9 text-xs text-slate-500 bg-slate-50 p-2 rounded border border-slate-100 flex gap-2">
-                                                <MessageSquareText className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                                                <span className="italic line-clamp-2">{t.description}</span>
-                                            </div>
-                                          )}
+                                        );
+                                      })
+                                  )}
+                              </div>
 
-                                          <div className="ml-9 text-[10px] text-slate-500 flex flex-wrap gap-2">
-                                              <span className="bg-slate-100 px-1.5 py-0.5 rounded"><b>TN:</b> {t.matrix.multipleChoice.recognition + t.matrix.multipleChoice.comprehension + t.matrix.multipleChoice.application}</span>
-                                              <span className="bg-slate-100 px-1.5 py-0.5 rounded"><b>ĐS:</b> {t.matrix.trueFalse.recognition + t.matrix.trueFalse.comprehension + t.matrix.trueFalse.application}</span>
-                                              <span className="bg-slate-100 px-1.5 py-0.5 rounded"><b>TLN:</b> {t.matrix.shortAnswer.recognition + t.matrix.shortAnswer.comprehension + t.matrix.shortAnswer.application}</span>
-                                              <span className="bg-slate-100 px-1.5 py-0.5 rounded"><b>TL:</b> {t.matrix.essay.recognition + t.matrix.essay.comprehension + t.matrix.essay.application}</span>
-                                          </div>
+                              <div className="p-3 bg-slate-50 border-t border-slate-200 space-y-2">
+                                  <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-600">
+                                      <div className="flex justify-between"><span>Tổng câu:</span> <span className="font-bold">{totalScore.mcCount + totalScore.tfCount + totalScore.saCount + totalScore.esCount}</span></div>
+                                      <div className="flex justify-between"><span>Tổng điểm:</span> <span className="font-bold text-blue-600">{totalScore.score.toFixed(2)}</span></div>
+                                  </div>
+
+                                  {/* SCORE BREAKDOWN GRID */}
+                                  <div className="bg-white border border-slate-200 rounded p-2 mb-2 grid grid-cols-4 gap-1 text-center shadow-sm">
+                                      <div className="flex flex-col">
+                                          <span className="text-[9px] text-slate-500 font-bold uppercase">Trắc nghiệm</span>
+                                          <span className="text-xs font-bold text-blue-600">{totalScore.scoreMC.toFixed(2)}đ</span>
                                       </div>
-                                  ))
-                              )}
+                                      <div className="flex flex-col border-l border-slate-100">
+                                          <span className="text-[9px] text-slate-500 font-bold uppercase">Đúng/Sai</span>
+                                          <span className="text-xs font-bold text-blue-600">{totalScore.scoreTF.toFixed(2)}đ</span>
+                                      </div>
+                                      <div className="flex flex-col border-l border-slate-100">
+                                          <span className="text-[9px] text-slate-500 font-bold uppercase">Trả lời ngắn</span>
+                                          <span className="text-xs font-bold text-blue-600">{totalScore.scoreSA.toFixed(2)}đ</span>
+                                      </div>
+                                       <div className="flex flex-col border-l border-slate-100">
+                                          <span className="text-[9px] text-slate-500 font-bold uppercase">Tự luận</span>
+                                          <span className="text-xs font-bold text-blue-600">{totalScore.scoreES.toFixed(2)}đ</span>
+                                      </div>
+                                  </div>
+
+                                  <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden flex">
+                                      <div style={{width: `${(totalScore.scoreRec/totalScore.score)*100}%`}} className="h-full bg-green-500" title="Biết"></div>
+                                      <div style={{width: `${(totalScore.scoreComp/totalScore.score)*100}%`}} className="h-full bg-yellow-500" title="Hiểu"></div>
+                                      <div style={{width: `${(totalScore.scoreApp/totalScore.score)*100}%`}} className="h-full bg-red-500" title="Vận dụng"></div>
+                                  </div>
+                                  <div className="flex justify-between text-[8px] text-slate-400">
+                                      <span>NB: {totalScore.score > 0 ? ((totalScore.scoreRec/totalScore.score)*100).toFixed(0) : 0}%</span>
+                                      <span>TH: {totalScore.score > 0 ? ((totalScore.scoreComp/totalScore.score)*100).toFixed(0) : 0}%</span>
+                                      <span>VD: {totalScore.score > 0 ? ((totalScore.scoreApp/totalScore.score)*100).toFixed(0) : 0}%</span>
+                                  </div>
+
+                                  <button 
+                                      onClick={onGenerate}
+                                      disabled={isLoading || params.topics.length === 0}
+                                      className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-lg shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:shadow-none transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 mt-2"
+                                  >
+                                      {isLoading ? <Loader2 className="w-5 h-5 animate-spin"/> : <Calculator className="w-5 h-5"/>}
+                                      TẠO ĐỀ THI NGAY
+                                  </button>
+                                  {params.topics.length === 0 && <div className="text-[10px] text-red-400 text-center animate-pulse">Cần ít nhất 1 chủ đề để tạo đề</div>}
+                              </div>
                           </div>
                       </div>
                   </div>
               )}
           </div>
       </div>
-
-      {/* 3. GENERATE BUTTON */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-slate-200 p-4 shadow-lg z-30 flex justify-center">
-         <div className="w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-            <button 
-                onClick={onGenerate} 
-                disabled={isLoading} 
-                className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-bold shadow-xl flex items-center justify-center gap-3 text-lg disabled:opacity-70 disabled:cursor-not-allowed transform transition-all active:scale-[0.99]"
-            >
-                {isLoading ? <span className="animate-pulse">Đang xử lý yêu cầu...</span> : "TẠO ĐỀ THI NGAY"}
-            </button>
-         </div>
-      </div>
-
     </div>
   );
 };

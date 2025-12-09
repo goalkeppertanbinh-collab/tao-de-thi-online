@@ -1,11 +1,175 @@
 
 import { TestParams } from "../types";
 
+// --- HELPER: ROBUST MARKDOWN TABLE PARSER ---
+// Parses a markdown table row while ignoring pipes '|' inside Math ($...$) or escaped pipes (\|)
+const parseMarkdownRow = (text: string): string[] => {
+    let line = text.trim();
+    // Remove outer pipes common in MD tables
+    if (line.startsWith('|')) line = line.substring(1);
+    if (line.endsWith('|')) line = line.substring(0, line.length - 1);
+
+    const parts: string[] = [];
+    let buffer = "";
+    let inMath = false;
+
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        const prevChar = i > 0 ? line[i - 1] : '';
+
+        // Toggle Math mode on '$' (if not escaped)
+        if (char === '$' && prevChar !== '\\') {
+            inMath = !inMath;
+            buffer += char;
+        } 
+        // Found a separator '|' (if not in math mode and not escaped)
+        else if (char === '|' && !inMath && prevChar !== '\\') {
+            parts.push(buffer.trim());
+            buffer = "";
+        } 
+        else {
+            buffer += char;
+        }
+    }
+    // Push the last cell
+    parts.push(buffer.trim());
+    return parts;
+};
+
+// --- HELPER TO REPLACE PLACEHOLDERS ---
+const replaceHeaderPlaceholders = (text: string, params?: TestParams, specificCode: string = "") => {
+    if (!text || !params) return text;
+
+    // Helper: Check casing of the placeholder to format the output value accordingly
+    const getReplacement = (match: string, val: string) => {
+        if (!val) return "___";
+        // Remove brackets to check content casing
+        const content = match.replace(/^\[|\]$/g, '');
+        // If placeholder is all uppercase (e.g. [MÔN HỌC]), make value uppercase
+        if (content === content.toUpperCase() && /[a-zA-Z]/.test(content)) { 
+             return val.toUpperCase();
+        }
+        return val;
+    };
+
+    let res = text;
+    // User Request: Only take the number from "Lớp 9" -> "9"
+    const gradeNum = params.grade.replace(/[^0-9]/g, ''); 
+
+    // 1. Kì thi (Case sensitive)
+    res = res.replace(/\[KÌ THI\]/gi, (match) => getReplacement(match, params.examTerm));
+
+    // 2. Môn học (Case sensitive)
+    res = res.replace(/\[Môn học\]/gi, (match) => getReplacement(match, params.subject));
+
+    // 3. Khối lớp (Always number only as requested)
+    res = res.replace(/\[Khối lớp\]/gi, (match) => gradeNum);
+
+    // 4. Thời gian (Case sensitive)
+    res = res.replace(/\[thời gian\]/gi, (match) => getReplacement(match, params.duration));
+
+    // 5. Mã đề (Dynamic replacement)
+    // Matches [mã đề], [mã đề 1], [MÃ ĐỀ], etc. and replaces with the specific code for that page
+    res = res.replace(/\[mã đề(?:\s*.*?)?\]/gi, (match) => specificCode || "___");
+
+    return res;
+};
+
+// --- HELPER TO RENDER CUSTOM HEADER ---
+// Updated signature to take a specific code for the current exam paper
+const renderCustomHeader = (docx: any, headerText: string, params?: TestParams, specificCode: string = "") => {
+    if (!headerText || !headerText.trim()) return [];
+
+    // Process placeholders before rendering
+    const processedText = replaceHeaderPlaceholders(headerText, params, specificCode);
+
+    const { Paragraph, TextRun, AlignmentType, Table, TableRow, TableCell, WidthType, BorderStyle, VerticalAlign } = docx;
+    const lines = processedText.split('\n');
+    const elements: any[] = [];
+
+    // Define a reusable No-Border object
+    const noBorder = { style: BorderStyle.NONE, size: 0, color: "auto" };
+    const noBordersConfig = {
+        top: noBorder,
+        bottom: noBorder,
+        left: noBorder,
+        right: noBorder,
+        insideVertical: noBorder,
+        insideHorizontal: noBorder,
+    };
+    const noCellBordersConfig = {
+        top: noBorder,
+        bottom: noBorder,
+        left: noBorder,
+        right: noBorder,
+    };
+
+    lines.forEach(line => {
+        const trimmedLine = line.trim();
+        if (!trimmedLine) return;
+
+        // Check for "||" separator to create a 2-column layout (e.g. "Sở GD&ĐT... || ĐỀ THI HỌC KỲ")
+        if (trimmedLine.includes("||")) {
+            const parts = trimmedLine.split("||");
+            const leftText = parts[0].trim();
+            const rightText = parts[1] ? parts[1].trim() : "";
+
+            elements.push(new Table({
+                rows: [
+                    new TableRow({
+                        children: [
+                            new TableCell({
+                                children: [new Paragraph({
+                                    children: [new TextRun({ text: leftText, bold: true, font: "Times New Roman", size: 24 })], // 12pt
+                                    alignment: AlignmentType.CENTER
+                                })],
+                                width: { size: 50, type: WidthType.PERCENTAGE },
+                                verticalAlign: VerticalAlign.CENTER,
+                                borders: noCellBordersConfig
+                            }),
+                            new TableCell({
+                                children: [new Paragraph({
+                                    children: [new TextRun({ text: rightText, bold: true, font: "Times New Roman", size: 24 })], // 12pt
+                                    alignment: AlignmentType.CENTER
+                                })],
+                                width: { size: 50, type: WidthType.PERCENTAGE },
+                                verticalAlign: VerticalAlign.CENTER,
+                                borders: noCellBordersConfig
+                            })
+                        ]
+                    })
+                ],
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                borders: noBordersConfig
+            }));
+        } else {
+            // Standard centered line
+            elements.push(new Paragraph({
+                children: [
+                    new TextRun({
+                        text: trimmedLine,
+                        bold: true,
+                        font: "Times New Roman",
+                        size: 24, // 12pt
+                        // Removed allCaps: true to respect user input casing
+                    })
+                ],
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 40, after: 40 }
+            }));
+        }
+    });
+    
+    // Add a spacer after the header block
+    elements.push(new Paragraph({ spacing: { after: 240 } }));
+    return elements;
+};
+
 // --- CORE BLOB GENERATORS ---
 
-export const generateWordBlob = async (content: string, docTitle: string = "ĐỀ KIỂM TRA TOÁN (THCS)"): Promise<Blob> => {
+export const generateWordBlob = async (content: string, docTitle: string = "ĐỀ KIỂM TRA TOÁN (THCS)", customHeader: string = "", params?: TestParams, currentCodes: string[] = []): Promise<Blob> => {
   const docx = await import("docx");
-  const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Table, TableRow, TableCell, WidthType, BorderStyle } = docx;
+  const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Table, TableRow, TableCell, WidthType, BorderStyle, PageBreak } = docx;
 
   const parseTextWithBold = (text: string) => {
     const parts = text.split(/(\*\*.*?\*\*)/);
@@ -41,21 +205,30 @@ export const generateWordBlob = async (content: string, docTitle: string = "Đ�
     });
   };
 
-  const lines = content.split("\n");
+  const lines = content.split(/\r?\n/);
   const docChildren: any[] = [];
+  const hasCustomHeader = !!(customHeader && customHeader.trim());
 
-  docChildren.push(
-    new Paragraph({
-      text: docTitle,
-      heading: HeadingLevel.TITLE,
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 300 },
-      run: { font: "Times New Roman", bold: true, size: 32 }
-    })
-  );
+  // 1. Add Custom Header if provided (For the FIRST page/exam)
+  if (hasCustomHeader) {
+      // Use the first code in the list for the first page
+      docChildren.push(...renderCustomHeader(docx, customHeader, params, currentCodes[0] || ""));
+  } else if (docTitle) {
+      // 2. Add Main Doc Title (ONLY if no custom header)
+      docChildren.push(
+        new Paragraph({
+          text: docTitle,
+          heading: HeadingLevel.TITLE,
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 300 },
+          run: { font: "Times New Roman", bold: true, size: 32 }
+        })
+      );
+  }
 
   let inTable = false;
   let tableRows: any[] = []; 
+  let paperCount = 0; // Track which exam paper we are on to pick the right code
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
@@ -74,6 +247,74 @@ export const generateWordBlob = async (content: string, docTitle: string = "Đ�
         docChildren.push(new Paragraph({}));
         continue;
     }
+
+    const upperLine = line.toUpperCase();
+
+    // --- DETECT SET TITLES (e.g., BỘ ĐỀ SỐ 1) ---
+    // If a custom header is present, we often want to hide the generic "Bộ đề số X" title 
+    if (upperLine.includes("BỘ ĐỀ SỐ")) {
+        if (hasCustomHeader) {
+            continue; // Skip this line
+        }
+    }
+
+    // --- DETECT EXAM TITLES (e.g., ĐỀ KIỂM TRA MÃ 901) ---
+    // This logic detects the start of a new exam paper to insert Page Breaks and Headers.
+    const isExamHeader = 
+        upperLine.includes("ĐỀ KIỂM TRA MÃ") || 
+        upperLine.includes("ĐỀ KIỂM TRA SỐ") ||
+        upperLine.includes("ĐỀ THI MÃ") ||
+        upperLine.includes("ĐỀ THI SỐ") ||
+        // Fallback: Lines starting with "Mã đề" or "Đề số" that are likely headers
+        ((upperLine.startsWith("MÃ ĐỀ") || upperLine.startsWith("ĐỀ SỐ")) && (line.length < 60 || line.startsWith("#") || line.startsWith("*")));
+
+    if (isExamHeader && !upperLine.includes("BỘ ĐỀ SỐ")) {
+        paperCount++;
+        
+        // If this is the 2nd, 3rd... paper found in the text stream
+        if (paperCount > 1) {
+             // 1. Insert Page Break to start new paper
+             docChildren.push(new Paragraph({ children: [new PageBreak()] }));
+             
+             // 2. Re-insert the Custom Header at the top of this new page
+             if (hasCustomHeader) {
+                 // Use the corresponding code for this paper (paperCount 2 uses index 1)
+                 const nextCode = currentCodes[paperCount - 1] || "";
+                 docChildren.push(...renderCustomHeader(docx, customHeader, params, nextCode));
+             }
+        } 
+        // Note: For paperCount === 1, the header was already inserted at the very top of the function.
+
+        // RENDER LOGIC: Only render the default Exam Header line if NO custom header is provided.
+        // If Custom Header is provided, we skip this line (as per user request "bỏ nó ra").
+        if (!hasCustomHeader) {
+            docChildren.push(new Paragraph({
+                text: line.replace(/[#*]/g, "").trim(), // Clean markdown chars
+                heading: HeadingLevel.HEADING_2,
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 200, after: 200 },
+                run: { font: "Times New Roman", bold: true, size: 26, color: "000000" }
+            }));
+        }
+        continue;
+    }
+
+    // --- SUPPRESS INFO LINES IF CUSTOM HEADER IS USED ---
+    // User wants to remove lines like "Môn: Toán", "Thời gian: 90 phút" if they use a custom header.
+    if (hasCustomHeader) {
+        const cleanLineUpper = line.replace(/[#*]/g, "").trim().toUpperCase();
+        // Check for common starting phrases of these info lines
+        if (
+            cleanLineUpper.startsWith("MÔN:") || 
+            cleanLineUpper.startsWith("THỜI GIAN") || 
+            cleanLineUpper.startsWith("LỚP:") ||
+            cleanLineUpper.startsWith("LỚP ")
+        ) {
+            continue; // Skip this line
+        }
+    }
+
+    // --- STANDARD MARKDOWN PARSING ---
 
     if (line.startsWith("# ")) {
       docChildren.push(new Paragraph({
@@ -105,17 +346,8 @@ export const generateWordBlob = async (content: string, docTitle: string = "Đ�
     }
 
     if (line.startsWith("|")) {
-      // 1. Handle Escaped Pipes: Replace \| with a placeholder to avoid splitting
-      const safeLine = line.replace(/\\\|/g, "__ESCAPED_PIPE__");
-
-      const cells = safeLine.split("|").filter((c, idx, arr) => {
-          if (idx === 0 && c === "") return false;
-          if (idx === arr.length - 1 && c === "") return false;
-          return true;
-      }).map(c => {
-          // Restore the escaped pipe as a normal character or LaTeX entity if needed
-          return c.trim().replace(/__ESCAPED_PIPE__/g, "|");
-      });
+      // Use Robust Parser instead of split('|')
+      const cells = parseMarkdownRow(line);
 
       if (line.includes("---")) continue;
 
@@ -215,6 +447,16 @@ export const generateMatrixBlob = async (params: TestParams): Promise<Blob> => {
     const docx = await import("docx");
     const { Document, Packer, Table, TableRow, AlignmentType, HeadingLevel, Paragraph, WidthType, PageOrientation } = docx;
 
+    const children: any[] = [];
+    
+    // Check if Custom Matrix Header is provided
+    if (params.headerData.matrix && params.headerData.matrix.trim()) {
+        children.push(...renderCustomHeader(docx, params.headerData.matrix, params));
+    } else {
+        // Only show Default Title if NO custom header
+        children.push(new Paragraph({ text: "BẢNG MA TRẬN ĐỀ KIỂM TRA", heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER, spacing: { after: 300 } }));
+    }
+
     // Row 1: Headers
     const hRow1 = new TableRow({
         children: [
@@ -290,8 +532,8 @@ export const generateMatrixBlob = async (params: TestParams): Promise<Blob> => {
         rows.push(new TableRow({
             children: [
                 createDataCell(docx, idx + 1),
-                createDataCell(docx, t.parentName || t.name, AlignmentType.LEFT), 
-                createDataCell(docx, t.name, AlignmentType.LEFT), 
+                createDataCell(docx, t.parentName || t.name, AlignmentType.LEFT as any), 
+                createDataCell(docx, t.name, AlignmentType.LEFT as any), 
                 createDataCell(docx, m.multipleChoice.recognition || ""),
                 createDataCell(docx, m.multipleChoice.comprehension || ""),
                 createDataCell(docx, m.multipleChoice.application || ""),
@@ -368,13 +610,12 @@ export const generateMatrixBlob = async (params: TestParams): Promise<Blob> => {
         ]
     }));
 
+    children.push(new Table({ rows: rows, width: { size: 100, type: WidthType.PERCENTAGE } }));
+
     const doc = new Document({
         sections: [{
             properties: { page: { size: { orientation: PageOrientation.LANDSCAPE }, margin: { top: 720, right: 720, bottom: 720, left: 720 } } },
-            children: [
-                new Paragraph({ text: "BẢNG MA TRẬN ĐỀ KIỂM TRA", heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER, spacing: { after: 300 } }),
-                new Table({ rows: rows, width: { size: 100, type: WidthType.PERCENTAGE } })
-            ]
+            children: children
         }]
     });
     return await Packer.toBlob(doc);
@@ -383,6 +624,16 @@ export const generateMatrixBlob = async (params: TestParams): Promise<Blob> => {
 export const generateSpecBlob = async (params: TestParams): Promise<Blob> => {
     const docx = await import("docx");
     const { Document, Packer, Table, TableRow, TableCell, AlignmentType, HeadingLevel, Paragraph, WidthType, PageOrientation, TextRun, BorderStyle, VerticalAlign } = docx;
+
+    const children: any[] = [];
+    
+    // Check if Custom Spec Header is provided
+    if (params.headerData.spec && params.headerData.spec.trim()) {
+        children.push(...renderCustomHeader(docx, params.headerData.spec, params));
+    } else {
+        // Only show Default Title if NO custom header
+        children.push(new Paragraph({ text: "BẢNG ĐẶC TẢ ĐỀ KIỂM TRA", heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER, spacing: { after: 300 } }));
+    }
 
     // Helper to create the detailed cell (e.g., "C1\nNLMH")
     const createRangeCell = (count: number, startIdx: number, competency: string = "TDLL") => {
@@ -467,9 +718,9 @@ export const generateSpecBlob = async (params: TestParams): Promise<Blob> => {
         
         const cells = [];
         cells.push(createDataCell(docx, idx + 1));
-        cells.push(createDataCell(docx, t.parentName || t.name, AlignmentType.LEFT));
-        cells.push(createDataCell(docx, t.name, AlignmentType.LEFT));
-        cells.push(createDataCell(docx, t.description || "-", AlignmentType.LEFT));
+        cells.push(createDataCell(docx, t.parentName || t.name, AlignmentType.LEFT as any));
+        cells.push(createDataCell(docx, t.name, AlignmentType.LEFT as any));
+        cells.push(createDataCell(docx, t.description || "-", AlignmentType.LEFT as any));
 
         // MC Multi
         cells.push(createRangeCell(m.multipleChoice.recognition, globalCounterMC, "TDLL")); globalCounterMC += m.multipleChoice.recognition;
@@ -534,14 +785,13 @@ export const generateSpecBlob = async (params: TestParams): Promise<Blob> => {
             createDataCell(docx, fmtPct(scoreES, finalScore), null, true, 3),
         ]
     }));
+    
+    children.push(new Table({ rows: rows, width: { size: 100, type: WidthType.PERCENTAGE } }));
 
     const doc = new Document({
         sections: [{
             properties: { page: { size: { orientation: PageOrientation.LANDSCAPE }, margin: { top: 720, right: 720, bottom: 720, left: 720 } } },
-            children: [
-                new Paragraph({ text: "BẢNG ĐẶC TẢ ĐỀ KIỂM TRA", heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER, spacing: { after: 300 } }),
-                new Table({ rows: rows, width: { size: 100, type: WidthType.PERCENTAGE } })
-            ]
+            children: children
         }]
     });
 
@@ -551,6 +801,16 @@ export const generateSpecBlob = async (params: TestParams): Promise<Blob> => {
 export const generateBankBlob = async (result: string, params: TestParams): Promise<Blob> => {
     const docx = await import("docx");
     const { Document, Packer, Table, TableRow, TableCell, AlignmentType, HeadingLevel, Paragraph, WidthType, PageOrientation, BorderStyle, VerticalAlign } = docx;
+
+    const children: any[] = [];
+    
+    // Check if Custom Bank Header is provided
+    if (params.headerData.bank && params.headerData.bank.trim()) {
+        children.push(...renderCustomHeader(docx, params.headerData.bank, params));
+    } else {
+        // Only show Default Title if NO custom header
+        children.push(new Paragraph({ text: "NGÂN HÀNG CÂU HỎI TỔNG HỢP", heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER, spacing: { after: 300 } }));
+    }
 
     const headerRegex = /(?:^|\n)#{1,3}\s*NGÂN\s+HÀNG\s+CÂU\s+HỎI/i;
     const parts = result.split(headerRegex);
@@ -571,9 +831,27 @@ export const generateBankBlob = async (result: string, params: TestParams): Prom
     const lines = bankSection.split("\n").filter(line => line.trim().startsWith("|") && !line.includes("---"));
     const dataRows = lines.slice(1); 
     
-    const parsedQuestions = dataRows.map(line => 
-        line.split("|").filter((c, i, arr) => i !== 0 && i !== arr.length - 1).map(c => c.trim())
-    );
+    // Use Robust Parser instead of split('|')
+    const parsedQuestions = dataRows.map(line => {
+        const cols = parseMarkdownRow(line);
+        // Fallback: If content split into too many columns (due to unescaped pipes not caught), merge them back
+        // Expected columns: Topic | Q/Level | Content | Ans | Score  (5 cols based on header below, but input might differ)
+        // Actually the code below expects: Topic(0), QNum(1), Level(2), Content(3), Ans(4), Score(5) based on original logic.
+        // Wait, the original logic was: line.split("|").filter(...) which removes empty start/end.
+        // So standard row: | T | Q | L | Content | A | S | -> splits to ["", "T", "Q", "L", "C", "A", "S", ""] -> filter -> ["T", "Q", "L", "C", "A", "S"] (6 items)
+        
+        if (cols.length > 6) {
+             const topic = cols[0];
+             const qNum = cols[1];
+             const level = cols[2];
+             const score = cols[cols.length - 1];
+             const answer = cols[cols.length - 2];
+             // Merge everything in between as content
+             const content = cols.slice(3, cols.length - 2).join(" | ");
+             return [topic, qNum, level, content, answer, score];
+        }
+        return cols;
+    });
 
     const rows: any[] = [];
     
@@ -641,13 +919,12 @@ export const generateBankBlob = async (result: string, params: TestParams): Prom
         }));
     });
 
+    children.push(new Table({ rows: rows, width: { size: 100, type: WidthType.PERCENTAGE } }));
+
     const doc = new Document({
         sections: [{
             properties: { page: { size: { orientation: PageOrientation.LANDSCAPE }, margin: { top: 720, right: 720, bottom: 720, left: 720 } } },
-            children: [
-                new Paragraph({ text: "NGÂN HÀNG CÂU HỎI TỔNG HỢP", heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER, spacing: { after: 300 } }),
-                new Table({ rows: rows, width: { size: 100, type: WidthType.PERCENTAGE } })
-            ]
+            children: children
         }]
     });
 
@@ -657,10 +934,10 @@ export const generateBankBlob = async (result: string, params: TestParams): Prom
 
 // --- SAVE AS WRAPPERS (Maintaining Original Interface) ---
 
-export const exportToWord = async (content: string, filename: string = "De_Kiem_Tra.docx", docTitle: string = "ĐỀ KIỂM TRA TOÁN (THCS)") => {
+export const exportToWord = async (content: string, filename: string = "De_Kiem_Tra.docx", docTitle: string = "ĐỀ KIỂM TRA TOÁN (THCS)", customHeader: string = "", params?: TestParams, currentCodes: string[] = []) => {
   const fileSaverModule = await import("file-saver");
   const saveAs = fileSaverModule.saveAs || (fileSaverModule as any).default;
-  const blob = await generateWordBlob(content, docTitle);
+  const blob = await generateWordBlob(content, docTitle, customHeader, params, currentCodes);
   saveAs(blob, filename);
 };
 
@@ -690,7 +967,7 @@ export const exportBankDocx = async (result: string, params: TestParams) => {
 };
 
 // --- HELPER FOR COMPLEX TABLES ---
-const createHeaderCell = (docx: any, text: string, rowSpan: number = 1, colSpan: number = 1, widthPercent: number = 0) => {
+function createHeaderCell(docx: any, text: string, rowSpan: number = 1, colSpan: number = 1, widthPercent: number = 0) {
   const { TableCell, Paragraph, TextRun, AlignmentType, VerticalAlign, WidthType, BorderStyle } = docx;
   return new TableCell({
     children: [new Paragraph({ 
@@ -710,7 +987,7 @@ const createHeaderCell = (docx: any, text: string, rowSpan: number = 1, colSpan:
   });
 };
 
-const createDataCell = (docx: any, text: string | number, align: any = null, bold: boolean = false, colSpan: number = 1) => {
+function createDataCell(docx: any, text: string | number, align: any = null, bold: boolean = false, colSpan: number = 1) {
     const { TableCell, Paragraph, TextRun, AlignmentType, VerticalAlign, BorderStyle } = docx;
     return new TableCell({
       children: [new Paragraph({ 

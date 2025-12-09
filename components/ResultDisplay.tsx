@@ -19,6 +19,7 @@ interface PreviewData {
   title: string;
   type: 'markdown' | 'matrix' | 'spec';
   content?: string;
+  customHeader?: string;
 }
 
 const ResultDisplay: React.FC<ResultDisplayProps> = ({ result, error, params, isLoading }) => {
@@ -30,6 +31,18 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ result, error, params, is
   const [isExportingAll, setIsExportingAll] = useState(false);
   
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
+
+  // --- HELPER: GET DEFAULT TITLE ---
+  const getDefaultTitle = () => {
+    if (!params) return "ĐỀ KIỂM TRA";
+    return `${params.examTerm} - MÔN: ${params.subject.toUpperCase()}`;
+  };
+
+  // --- HELPER: GET CODES ARRAY FOR A SET ---
+  const getCodesForSet = (setIndex: number): string[] => {
+      if (!params || !params.testSets[setIndex]) return [];
+      return params.testSets[setIndex].specificCodes.split(',').map(s => s.trim());
+  };
 
   // --- HELPER: EXTRACT CONTENT ---
   const extractContent = (fullText: string, setIndex: number, type: 'test' | 'hdc' | 'bank') => {
@@ -315,6 +328,35 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ result, error, params, is
 
   // --- HTML RENDERERS FOR STRUCTURED PREVIEWS ---
   
+  const renderCustomHeaderHTML = (headerText?: string) => {
+      if (!headerText || !params) return null;
+      
+      // Quick replacement for preview (no specific codes context in simple preview)
+      let text = headerText;
+      text = text.replace(/\[KÌ THI\]/gi, params.examTerm || "___");
+      text = text.replace(/\[Môn học\]/gi, params.subject || "___");
+      text = text.replace(/\[Khối lớp\]/gi, params.grade || "___");
+      text = text.replace(/\[thời gian\]/gi, params.duration || "___");
+      text = text.replace(/\[mã đề \d+\]/gi, "..."); // Placeholder in preview
+
+      return (
+          <div className="mb-6 pb-4 border-b-2 border-slate-800">
+              {text.split('\n').map((line, i) => {
+                  if (line.includes("||")) {
+                      const [left, right] = line.split("||");
+                      return (
+                          <div key={i} className="flex justify-between items-start mb-2">
+                              <div className="text-left font-bold w-1/2 pr-2">{left}</div>
+                              <div className="text-right font-bold w-1/2 pl-2">{right}</div>
+                          </div>
+                      );
+                  }
+                  return <div key={i} className="text-center font-bold text-lg mb-1 uppercase">{line}</div>;
+              })}
+          </div>
+      );
+  };
+
   const renderMatrixHTML = () => {
     if (!params) return null;
     const { topics, pointValues } = params;
@@ -323,6 +365,10 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ result, error, params, is
 
     return (
       <div className="overflow-x-auto">
+        {renderCustomHeaderHTML(params.headerData?.matrix)}
+        {/* Only show default title if custom header is missing */}
+        {(!params.headerData?.matrix) && <h2 className="text-center font-bold text-xl mb-4">BẢNG MA TRẬN ĐỀ KIỂM TRA</h2>}
+        
         <table className="w-full border-collapse border border-slate-300 text-xs sm:text-sm">
           <thead>
             <tr className="bg-slate-100">
@@ -434,6 +480,10 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ result, error, params, is
 
     return (
       <div className="overflow-x-auto">
+        {renderCustomHeaderHTML(params.headerData?.spec)}
+        {/* Only show default title if custom header is missing */}
+        {(!params.headerData?.spec) && <h2 className="text-center font-bold text-xl mb-4">BẢNG ĐẶC TẢ ĐỀ KIỂM TRA</h2>}
+        
         <table className="w-full border-collapse border border-slate-300 text-xs">
           <thead>
             <tr className="bg-slate-100">
@@ -499,14 +549,16 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ result, error, params, is
       const filename = `${setConfig.fileName || `De_Kiem_Tra_So${setIndex+1}`}_De_Thi.docx`;
       const content = extractContent(result, setIndex, 'test');
       if (!content) { alert("Không tìm thấy nội dung đề thi."); return; }
-      await exportToWord(content, filename, `ĐỀ KIỂM TRA SỐ ${setIndex+1}`);
+      
+      // Pass params and specific codes for placeholder replacement
+      await exportToWord(content, filename, getDefaultTitle(), params.headerData?.exam, params, getCodesForSet(setIndex));
     } catch (e) { console.error("Export failed", e); alert("Xuất file thất bại."); } finally { setIsExporting(false); }
   };
 
   const handlePreviewSet = (setIndex: number) => {
       if (!result) return;
       const content = extractContent(result, setIndex, 'test');
-      if (content) setPreviewData({ title: `Xem trước: Bộ đề số ${setIndex + 1}`, type: 'markdown', content });
+      if (content) setPreviewData({ title: `Xem trước: Bộ đề số ${setIndex + 1}`, type: 'markdown', content, customHeader: params?.headerData?.exam });
   };
 
   const handleDownloadHDC = async () => {
@@ -520,7 +572,8 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ result, error, params, is
           }
           if (!fullHDC.trim()) { alert("Không tìm thấy nội dung Hướng dẫn chấm."); return; }
           const filename = `${params.testSets[0]?.fileName || 'De_Thi'}_Huong_Dan_Cham.docx`;
-          await exportToWord(fullHDC, filename, "HƯỚNG DẪN CHẤM CHI TIẾT");
+          // HDC typically doesn't need specific codes replacement per page, but we pass params just in case
+          await exportToWord(fullHDC, filename, "HƯỚNG DẪN CHẤM CHI TIẾT", params.headerData?.hdc, params);
       } catch (e) { alert("Xuất file HDC thất bại."); } finally { setIsExportingHDC(false); }
   };
 
@@ -531,7 +584,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ result, error, params, is
           const hdcContent = extractContent(result, i, 'hdc');
           if (hdcContent) fullHDC += hdcContent + "\n\n---\n\n";
       }
-      if (fullHDC) setPreviewData({ title: "Xem trước: Hướng dẫn chấm", type: 'markdown', content: fullHDC });
+      if (fullHDC) setPreviewData({ title: "Xem trước: Hướng dẫn chấm", type: 'markdown', content: fullHDC, customHeader: params.headerData?.hdc });
   }
 
   const handleDownloadBank = async () => {
@@ -543,7 +596,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ result, error, params, is
   const handlePreviewBank = () => {
       if (!result) return;
       const content = extractContent(result, 0, 'bank');
-      if (content) setPreviewData({ title: "Xem trước: Ngân hàng câu hỏi", type: 'markdown', content });
+      if (content) setPreviewData({ title: "Xem trước: Ngân hàng câu hỏi", type: 'markdown', content, customHeader: params?.headerData?.bank });
   }
 
   const handleDownloadMatrix = async () => {
@@ -584,15 +637,19 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ result, error, params, is
              const setIndex = i;
              const setConfig = params.testSets[setIndex];
              const testContent = extractContent(result, setIndex, 'test');
+             const currentCodes = getCodesForSet(setIndex); // Get specific codes for this set
+
              if (testContent) {
-                 const setBlob = await generateWordBlob(testContent, `ĐỀ KIỂM TRA SỐ ${setIndex+1}`);
+                 // Pass Exam Header with Params and Codes
+                 const setBlob = await generateWordBlob(testContent, getDefaultTitle(), params.headerData?.exam, params, currentCodes);
                  zip.file(`${setConfig.fileName || `De_Kiem_Tra_So${setIndex+1}`}_De_Thi.docx`, setBlob);
              }
              const hdcContent = extractContent(result, setIndex, 'hdc');
              if (hdcContent) combinedHDC += hdcContent + "\n\n---\n\n";
         }
         if (combinedHDC) {
-            const hdcBlob = await generateWordBlob(combinedHDC, "HƯỚNG DẪN CHẤM TỔNG HỢP");
+            // Pass HDC Header
+            const hdcBlob = await generateWordBlob(combinedHDC, "HƯỚNG DẪN CHẤM TỔNG HỢP", params.headerData?.hdc, params);
             zip.file(`${folderName}_Huong_Dan_Cham_Full.docx`, hdcBlob);
         }
         const zipContent = await zip.generateAsync({type:"blob"});
@@ -769,6 +826,11 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ result, error, params, is
                   {/* PREVIEW CONTENT - SIMULATE PDF READER */}
                   <div className="flex-1 overflow-y-auto bg-slate-200 p-8 custom-scrollbar flex justify-center printable-content">
                       <div className={`a4-paper transform transition-transform origin-top ${isLandscapePreview ? 'landscape' : ''}`}>
+                        {renderCustomHeaderHTML(previewData.customHeader)}
+                        {/* Show default title in preview if no custom header for matrix/spec */}
+                        {previewData.type === 'matrix' && !previewData.customHeader && <h2 className="text-center font-bold text-xl mb-4">BẢNG MA TRẬN ĐỀ KIỂM TRA</h2>}
+                        {previewData.type === 'spec' && !previewData.customHeader && <h2 className="text-center font-bold text-xl mb-4">BẢNG ĐẶC TẢ ĐỀ KIỂM TRA</h2>}
+                        
                         {previewData.type === 'markdown' && previewData.content && (
                             <div className="markdown-body">
                                 <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex, rehypeRaw]}>

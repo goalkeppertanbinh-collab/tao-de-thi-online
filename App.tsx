@@ -8,9 +8,60 @@ import { generateMathTest } from "./services/geminiService";
 import { TestParams, GenerationState } from "./types";
 import { Calculator, Settings2, FileText, PenTool } from "lucide-react";
 
+// --- SIMPLE ENCRYPTION UTILS (OBFUSCATION) ---
+const SECRET_SALT = "MathGen7991_Secure_Key_v1";
+
+const encryptData = (text: string) => {
+  if (!text) return "";
+  try {
+    const textToChars = (text: string) => text.split("").map((c) => c.charCodeAt(0));
+    const byteHex = (n: number) => ("0" + Number(n).toString(16)).slice(-2);
+    const applySaltToChar = (code: number) => textToChars(SECRET_SALT).reduce((a, b) => a ^ b, code);
+
+    return text
+      .split("")
+      .map((c) => c.charCodeAt(0))
+      .map(applySaltToChar)
+      .map(byteHex)
+      .join("");
+  } catch (e) {
+    return text; // Fallback to raw if fail
+  }
+};
+
+const decryptData = (encoded: string) => {
+  if (!encoded) return "";
+  try {
+    const textToChars = (text: string) => text.split("").map((c) => c.charCodeAt(0));
+    const applySaltToChar = (code: number) => textToChars(SECRET_SALT).reduce((a, b) => a ^ b, code);
+    
+    const res = (encoded.match(/.{1,2}/g) || [])
+      .map((hex) => parseInt(hex, 16))
+      .map(applySaltToChar)
+      .map((charCode) => String.fromCharCode(charCode))
+      .join("");
+    return res;
+  } catch (e) {
+    return ""; // Return empty if decryption fails (invalid format)
+  }
+};
+
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"config" | "result" | "tikz">("config");
-  const [params, setParams] = useState<TestParams>(DEFAULT_PARAMS);
+  
+  // Load initial params from localStorage or fall back to defaults
+  const [params, setParams] = useState<TestParams>(() => {
+    try {
+      const savedParams = localStorage.getItem("mathgen_params_v1");
+      if (savedParams) {
+        return { ...DEFAULT_PARAMS, ...JSON.parse(savedParams) };
+      }
+    } catch (error) {
+      console.error("Error loading params from localStorage:", error);
+    }
+    return DEFAULT_PARAMS;
+  });
+
   const [apiKey, setApiKey] = useState<string>("");
   const [state, setState] = useState<GenerationState>({
     isLoading: false,
@@ -18,15 +69,36 @@ const App: React.FC = () => {
     error: null,
   });
 
+  // Load API Key on mount (Decrypting from storage)
   useEffect(() => {
-    const storedKey = localStorage.getItem("gemini_api_key");
-    if (storedKey) setApiKey(storedKey);
+    const storedEncryptedKey = localStorage.getItem("gemini_api_key_secure");
+    
+    // Legacy support: Check for old plain text key first
+    const oldKey = localStorage.getItem("gemini_api_key");
+    
+    if (storedEncryptedKey) {
+      const decrypted = decryptData(storedEncryptedKey);
+      setApiKey(decrypted);
+    } else if (oldKey) {
+      // Migrate old key to new secure storage
+      setApiKey(oldKey);
+      localStorage.setItem("gemini_api_key_secure", encryptData(oldKey));
+      localStorage.removeItem("gemini_api_key"); // Clean up old key
+    }
   }, []);
 
+  // Save API Key when changed (Encrypting to storage)
   const handleApiKeyChange = (key: string) => {
     setApiKey(key);
-    localStorage.setItem("gemini_api_key", key);
+    // Encrypt before saving
+    const encrypted = encryptData(key);
+    localStorage.setItem("gemini_api_key_secure", encrypted);
   };
+
+  // Save Params to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem("mathgen_params_v1", JSON.stringify(params));
+  }, [params]);
 
   const handleGenerate = async () => {
     if (!apiKey.trim()) {

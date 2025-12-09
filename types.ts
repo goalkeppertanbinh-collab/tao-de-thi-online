@@ -35,7 +35,17 @@ export interface TestSetConfig {
   enableShuffle: boolean;
 }
 
+export interface HeaderData {
+  matrix: string;
+  spec: string;
+  bank: string;
+  exam: string;
+  hdc: string;
+}
+
 export interface TestParams {
+  subject: string; // New field
+  examTerm: string; // New field
   grade: string;
   duration: string;
   testSets: TestSetConfig[];
@@ -44,6 +54,7 @@ export interface TestParams {
   topics: Topic[];
   pointValues: PointValues;
   additionalRequest: string;
+  headerData: HeaderData; // New field for headers
 }
 
 export interface GenerationState {
