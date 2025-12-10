@@ -303,11 +303,11 @@ export const CURRICULUM_DATA: CurriculumStandard[] = [
     grade: "Lớp 8",
     keywords: ["biểu thức", "đa thức", "nhiều biến"],
     parentTopic: "Biểu thức đại số",
-    topic: "Đa thức nhiều biến",
+    topic: "Đa thức nhiều biến, Các phép toán cộng, trừ, nhân, chia các đa thức nhiều biến",
     content: {
-      nb: ["Nhận biết đơn thức, đa thức nhiều biến."],
+      nb: ["Nhận biết được các khái niệm về đơn thức, đa thức nhiều biến."],
       th: ["Tính giá trị đa thức khi biết giá trị của biến."],
-      vd: ["Thu gọn đơn thức, đa thức.", "Cộng, trừ, nhân, chia đa thức nhiều biến (trường hợp đơn giản)."]
+      vd: ["Thu gọn đơn thức, đa thức.", "Thực hiện được phép nhân đơn thức với đa thức và phép chia hết một đơn thức cho một đơn thức", "Cộng, trừ, nhân, chia đa thức nhiều biến (trường hợp đơn giản).","Thực hiện được phép chia hết một đa thức cho một đơn thức trong những trường hợp đơn giản"]
     }
   },
   {
