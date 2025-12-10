@@ -316,20 +316,20 @@ export const CURRICULUM_DATA: CurriculumStandard[] = [
     parentTopic: "Biểu thức đại số",
     topic: "Hằng đẳng thức đáng nhớ",
     content: {
-      nb: ["Nhận biết đồng nhất thức, hằng đẳng thức."],
-      th: ["Mô tả các hằng đẳng thức (bình phương tổng/hiệu, hiệu hai bình phương...)."],
-      vd: ["Vận dụng hằng đẳng thức để phân tích đa thức thành nhân tử.", "Tính nhanh."]
+      nb: ["Nhận biết khái niệm: đồng nhất thức, hằng đẳng thức."],
+      th: ["Mô tả các hằng đẳng thức (bình phương tổng/hiệu, hiệu hai bình phương, lập phương của tổng và hiệu, tổng và hiệu hai lập phương)."],
+      vd: ["Vận dụng được các hằng đẳng thức để phân tích đa thức thành nhân tử ở dạng: vận dụng trực tiếp hằng đẳng thức.", "Vận dụng hằng đẳng thức thông qua nhóm hạng tử và đặt nhân tử chung."]
     }
   },
   {
     grade: "Lớp 8",
     keywords: ["phân thức"],
     parentTopic: "Biểu thức đại số",
-    topic: "Phân thức đại số",
+    topic: "Phân thức đại số.Tính chất cơ bản của phân thức đại số. Các phép toán cộng, trừ, nhân, chia các phân thức đại số",
     content: {
-      nb: ["Nhận biết phân thức đại số, điều kiện xác định.", "Hai phân thức bằng nhau."],
+      nb: ["Nhận biết phân thức đại số, điều kiện xác định.","giá trị của phân thức đại số", "Hai phân thức bằng nhau."],
       th: ["Mô tả tính chất cơ bản của phân thức."],
-      vd: ["Thực hiện cộng, trừ, nhân, chia phân thức.", "Rút gọn biểu thức hữu tỉ.", "Tính giá trị phân thức."]
+      vd: ["Thực hiện được các phép tính: phép cộng, phép trừ, phép nhân, phép chia đối với hai phân thức đại số.", "Vận dụng được các tính chất giao hoán, kết hợp, phân phối của phép nhân đối với phép cộng, quy tắc dấu ngoặc với phân thức đại số đơn giản trong tính toán."]
     }
   },
   {
