@@ -5,17 +5,17 @@ export const GRADES = ["Lớp 6", "Lớp 7", "Lớp 8", "Lớp 9"];
 export const DURATIONS = ["45 phút", "60 phút", "90 phút"];
 export const SUBJECTS = ["Toán", "Vật lí", "Hóa học", "Sinh học", "Tin học", "Công nghệ", "KHTN","LS&ĐL"];
 export const EXAM_TERMS = [
-  "GIỮA KÌ I", 
-  "CUỐI KÌ I", 
-  "GIỮA KÌ II", 
-  "CUỐI KÌ II", 
+  "GIỮA KỲ I", 
+  "CUỐI KỲ I", 
+  "GIỮA KỲ II", 
+  "CUỐI KỲ II", 
   "KHẢO SÁT CHẤT LƯỢNG",
   "THI THỬ VÀO 10"
 ];
 
 export const DEFAULT_PARAMS: TestParams = {
   subject: "Toán",
-  examTerm: "GIỮA KÌ I",
+  examTerm: "GIỮA KỲ I",
   grade: "Lớp 9",
   duration: "90 phút",
   testSets: [
